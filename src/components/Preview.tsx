@@ -8,16 +8,55 @@ import {
   AppBar,
   Toolbar,
   Divider,
-  TextField,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
+import { KeyboardEvent, useRef } from 'react';
+
+interface EditableSpanProps {
+  content: string;
+  onUpdate: (newContent: string) => void;
+  style?: React.CSSProperties;
+  className?: string;
+}
+
+const EditableSpan: React.FC<EditableSpanProps> = ({ content, onUpdate, style, className }) => {
+  const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
+    onUpdate(e.target.textContent || '');
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLSpanElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      style={{ ...style, cursor: 'text', outline: 'none' }}
+      className={className}
+    >
+      {content}
+    </span>
+  );
+};
 
 export default function Preview() {
   const navigate = useNavigate();
-  const { resumeData, updateContact, updateSummary, updateDocumentStyle } = useResume();
+  const { resumeData, updateContact, updateSummary, updateDocumentStyle, importData, exportData, resetData } = useResume();
   const { documentStyle } = resumeData;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadPDF = () => {
     const element = document.getElementById('resume-preview');
@@ -30,6 +69,45 @@ export default function Preview() {
     };
 
     html2pdf().set(opt).from(element).save();
+  };
+
+  const handleExportJSON = () => {
+    const jsonData = exportData();
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'resume-data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const jsonData = e.target?.result as string;
+          importData(jsonData);
+        } catch (error) {
+          alert('Failed to import data. Please check the file format.');
+        }
+      };
+      reader.readAsText(file);
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleReset = () => {
+    if (window.confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+      resetData();
+    }
   };
 
   const getContentStyle = () => ({
@@ -45,6 +123,40 @@ export default function Preview() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Resume Preview
           </Typography>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleImportJSON}
+          />
+          <Tooltip title="Import JSON">
+            <IconButton
+              color="primary"
+              onClick={() => fileInputRef.current?.click()}
+              sx={{ mr: 1 }}
+            >
+              <UploadIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Export JSON">
+            <IconButton
+              color="primary"
+              onClick={handleExportJSON}
+              sx={{ mr: 1 }}
+            >
+              <DownloadIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Reset Data">
+            <IconButton
+              color="error"
+              onClick={handleReset}
+              sx={{ mr: 2 }}
+            >
+              <RestartAltIcon />
+            </IconButton>
+          </Tooltip>
           <Button
             variant="contained"
             color="primary"
@@ -86,70 +198,59 @@ export default function Preview() {
             ...getContentStyle(),
           }}
         >
-          <TextField
-            fullWidth
-            variant="standard"
-            InputProps={{
-              style: {
+          <Typography variant="h4" component="div" gutterBottom>
+            <EditableSpan
+              content={resumeData.contact.fullName}
+              onUpdate={(value) => updateContact({ ...resumeData.contact, fullName: value })}
+              style={{
                 ...getContentStyle(),
                 fontSize: `${documentStyle.fontSize * 1.5}pt`,
                 fontWeight: 'bold',
-              },
-            }}
-            value={resumeData.contact.fullName}
-            onChange={(e) => updateContact({ ...resumeData.contact, fullName: e.target.value })}
-          />
+              }}
+            />
+          </Typography>
 
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              variant="standard"
-              size="small"
-              value={resumeData.contact.email}
-              onChange={(e) => updateContact({ ...resumeData.contact, email: e.target.value })}
-              sx={{ mr: 2 }}
+          <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+            <EditableSpan
+              content={resumeData.contact.email}
+              onUpdate={(value) => updateContact({ ...resumeData.contact, email: value })}
+              style={getContentStyle()}
             />
-            <TextField
-              variant="standard"
-              size="small"
-              value={resumeData.contact.phone}
-              onChange={(e) => updateContact({ ...resumeData.contact, phone: e.target.value })}
-              sx={{ mr: 2 }}
+            <EditableSpan
+              content={resumeData.contact.phone}
+              onUpdate={(value) => updateContact({ ...resumeData.contact, phone: value })}
+              style={getContentStyle()}
             />
-            <TextField
-              variant="standard"
-              size="small"
-              value={resumeData.contact.linkedin}
-              onChange={(e) => updateContact({ ...resumeData.contact, linkedin: e.target.value })}
+            <EditableSpan
+              content={resumeData.contact.linkedin}
+              onUpdate={(value) => updateContact({ ...resumeData.contact, linkedin: value })}
+              style={getContentStyle()}
             />
           </Box>
 
           {resumeData.contact.website && (
-            <TextField
-              fullWidth
-              variant="standard"
-              size="small"
-              value={resumeData.contact.website}
-              onChange={(e) => updateContact({ ...resumeData.contact, website: e.target.value })}
-              sx={{ mb: 2 }}
-            />
+            <Box sx={{ mb: 2 }}>
+              <EditableSpan
+                content={resumeData.contact.website}
+                onUpdate={(value) => updateContact({ ...resumeData.contact, website: value })}
+                style={getContentStyle()}
+              />
+            </Box>
           )}
 
-          <Box sx={{ mt: 2, mb: 4 }}>
+          <Box sx={{ mt: 2, mb: 4, display: 'flex', gap: 2 }}>
             {resumeData.contact.country && (
-              <TextField
-                variant="standard"
-                size="small"
-                value={resumeData.contact.country}
-                onChange={(e) => updateContact({ ...resumeData.contact, country: e.target.value })}
-                sx={{ mr: 2 }}
+              <EditableSpan
+                content={resumeData.contact.country}
+                onUpdate={(value) => updateContact({ ...resumeData.contact, country: value })}
+                style={getContentStyle()}
               />
             )}
             {resumeData.contact.state && (
-              <TextField
-                variant="standard"
-                size="small"
-                value={resumeData.contact.state}
-                onChange={(e) => updateContact({ ...resumeData.contact, state: e.target.value })}
+              <EditableSpan
+                content={resumeData.contact.state}
+                onUpdate={(value) => updateContact({ ...resumeData.contact, state: value })}
+                style={getContentStyle()}
               />
             )}
           </Box>
@@ -159,14 +260,13 @@ export default function Preview() {
               <Typography variant="h5" gutterBottom sx={getContentStyle()}>
                 Summary
               </Typography>
-              <TextField
-                fullWidth
-                multiline
-                variant="standard"
-                value={resumeData.summary}
-                onChange={(e) => updateSummary(e.target.value)}
-                sx={{ mb: 2 }}
-              />
+              <Box sx={{ mb: 2 }}>
+                <EditableSpan
+                  content={resumeData.summary}
+                  onUpdate={updateSummary}
+                  style={getContentStyle()}
+                />
+              </Box>
               <Divider sx={{ my: 2 }} />
             </>
           )}

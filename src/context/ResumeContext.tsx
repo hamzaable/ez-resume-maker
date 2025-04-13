@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 interface ContactInfo {
   fullName: string;
@@ -50,32 +50,47 @@ interface ResumeContextType {
   updateSkills: (skills: string[]) => void;
   updateSummary: (summary: string) => void;
   updateDocumentStyle: (style: Partial<DocumentStyle>) => void;
+  importData: (jsonData: string) => void;
+  exportData: () => string;
+  resetData: () => void;
 }
+
+const defaultResumeData: ResumeData = {
+  contact: {
+    fullName: '',
+    email: '',
+    phone: '',
+    linkedin: '',
+    website: '',
+    country: '',
+    state: '',
+  },
+  experiences: [],
+  education: [],
+  skills: [],
+  summary: '',
+  documentStyle: {
+    font: 'MERRIWEATHER',
+    fontSize: 11,
+    lineSpacing: 1.5,
+    margins: 20,
+  },
+};
+
+const STORAGE_KEY = 'resumeData';
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
 
 export function ResumeProvider({ children }: { children: ReactNode }) {
-  const [resumeData, setResumeData] = useState<ResumeData>({
-    contact: {
-      fullName: '',
-      email: '',
-      phone: '',
-      linkedin: '',
-      website: '',
-      country: '',
-      state: '',
-    },
-    experiences: [],
-    education: [],
-    skills: [],
-    summary: '',
-    documentStyle: {
-      font: 'MERRIWEATHER',
-      fontSize: 11,
-      lineSpacing: 1.5,
-      margins: 20,
-    },
+  const [resumeData, setResumeData] = useState<ResumeData>(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    return savedData ? JSON.parse(savedData) : defaultResumeData;
   });
+
+  // Save to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(resumeData));
+  }, [resumeData]);
 
   const updateContact = (contact: ContactInfo) => {
     setResumeData(prev => ({ ...prev, contact }));
@@ -104,6 +119,24 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const importData = (jsonData: string) => {
+    try {
+      const parsedData = JSON.parse(jsonData) as ResumeData;
+      setResumeData(parsedData);
+    } catch (error) {
+      console.error('Failed to import data:', error);
+      throw new Error('Invalid JSON format');
+    }
+  };
+
+  const exportData = () => {
+    return JSON.stringify(resumeData, null, 2);
+  };
+
+  const resetData = () => {
+    setResumeData(defaultResumeData);
+  };
+
   return (
     <ResumeContext.Provider
       value={{
@@ -114,6 +147,9 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         updateSkills,
         updateSummary,
         updateDocumentStyle,
+        importData,
+        exportData,
+        resetData,
       }}
     >
       {children}
