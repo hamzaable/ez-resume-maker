@@ -26,12 +26,20 @@ interface Education {
   endDate: string;
 }
 
+interface DocumentStyle {
+  font: string;
+  fontSize: number;
+  lineSpacing: number;
+  margins: number;
+}
+
 interface ResumeData {
   contact: ContactInfo;
   experiences: Experience[];
   education: Education[];
   skills: string[];
   summary: string;
+  documentStyle: DocumentStyle;
 }
 
 interface ResumeContextType {
@@ -41,6 +49,7 @@ interface ResumeContextType {
   updateEducation: (education: Education[]) => void;
   updateSkills: (skills: string[]) => void;
   updateSummary: (summary: string) => void;
+  updateDocumentStyle: (style: Partial<DocumentStyle>) => void;
 }
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
@@ -60,6 +69,12 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     education: [],
     skills: [],
     summary: '',
+    documentStyle: {
+      font: 'MERRIWEATHER',
+      fontSize: 11,
+      lineSpacing: 1.5,
+      margins: 20,
+    },
   });
 
   const updateContact = (contact: ContactInfo) => {
@@ -82,6 +97,13 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
     setResumeData(prev => ({ ...prev, summary }));
   };
 
+  const updateDocumentStyle = (style: Partial<DocumentStyle>) => {
+    setResumeData(prev => ({
+      ...prev,
+      documentStyle: { ...prev.documentStyle, ...style },
+    }));
+  };
+
   return (
     <ResumeContext.Provider
       value={{
@@ -91,6 +113,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         updateEducation,
         updateSkills,
         updateSummary,
+        updateDocumentStyle,
       }}
     >
       {children}

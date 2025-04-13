@@ -8,26 +8,35 @@ import {
   AppBar,
   Toolbar,
   Divider,
+  TextField,
 } from '@mui/material';
 import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
+import DocumentControls from './DocumentControls';
 
 export default function Preview() {
   const navigate = useNavigate();
-  const { resumeData } = useResume();
+  const { resumeData, updateContact, updateSummary, updateDocumentStyle } = useResume();
+  const { documentStyle } = resumeData;
 
   const handleDownloadPDF = () => {
     const element = document.getElementById('resume-preview');
     const opt = {
-      margin: 1,
+      margin: [documentStyle.margins, documentStyle.margins],
       filename: 'resume.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save();
   };
+
+  const getContentStyle = () => ({
+    fontFamily: documentStyle.font.toLowerCase().replace(/_/g, ' '),
+    fontSize: `${documentStyle.fontSize}pt`,
+    lineHeight: documentStyle.lineSpacing,
+  });
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -53,79 +62,129 @@ export default function Preview() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <DocumentControls
+        font={documentStyle.font}
+        fontSize={documentStyle.fontSize}
+        lineSpacing={documentStyle.lineSpacing}
+        margins={documentStyle.margins}
+        onFontChange={(font) => updateDocumentStyle({ font })}
+        onFontSizeChange={(fontSize) => updateDocumentStyle({ fontSize })}
+        onLineSpacingChange={(lineSpacing) => updateDocumentStyle({ lineSpacing })}
+        onMarginsChange={(margins) => updateDocumentStyle({ margins })}
+      />
+
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
         <Paper
           id="resume-preview"
           sx={{
-            p: 4,
-            minHeight: '29.7cm',
-            width: '21cm',
+            p: `${documentStyle.margins}mm`,
+            minHeight: '297mm',
+            width: '210mm',
             margin: '0 auto',
             backgroundColor: 'white',
             color: 'black',
+            ...getContentStyle(),
           }}
         >
-          <Typography variant="h4" gutterBottom>
-            {resumeData.contact.fullName}
-          </Typography>
+          <TextField
+            fullWidth
+            variant="standard"
+            InputProps={{
+              style: {
+                ...getContentStyle(),
+                fontSize: `${documentStyle.fontSize * 1.5}pt`,
+                fontWeight: 'bold',
+              },
+            }}
+            value={resumeData.contact.fullName}
+            onChange={(e) => updateContact({ ...resumeData.contact, fullName: e.target.value })}
+          />
 
           <Box sx={{ mb: 3 }}>
-            <Typography variant="body1" component="span" sx={{ mr: 2 }}>
-              {resumeData.contact.email}
-            </Typography>
-            <Typography variant="body1" component="span" sx={{ mr: 2 }}>
-              {resumeData.contact.phone}
-            </Typography>
-            <Typography variant="body1" component="span">
-              {resumeData.contact.linkedin}
-            </Typography>
+            <TextField
+              variant="standard"
+              size="small"
+              value={resumeData.contact.email}
+              onChange={(e) => updateContact({ ...resumeData.contact, email: e.target.value })}
+              sx={{ mr: 2 }}
+            />
+            <TextField
+              variant="standard"
+              size="small"
+              value={resumeData.contact.phone}
+              onChange={(e) => updateContact({ ...resumeData.contact, phone: e.target.value })}
+              sx={{ mr: 2 }}
+            />
+            <TextField
+              variant="standard"
+              size="small"
+              value={resumeData.contact.linkedin}
+              onChange={(e) => updateContact({ ...resumeData.contact, linkedin: e.target.value })}
+            />
           </Box>
 
           {resumeData.contact.website && (
-            <Typography variant="body1" gutterBottom>
-              {resumeData.contact.website}
-            </Typography>
+            <TextField
+              fullWidth
+              variant="standard"
+              size="small"
+              value={resumeData.contact.website}
+              onChange={(e) => updateContact({ ...resumeData.contact, website: e.target.value })}
+              sx={{ mb: 2 }}
+            />
           )}
 
           <Box sx={{ mt: 2, mb: 4 }}>
             {resumeData.contact.country && (
-              <Typography variant="body1" component="span" sx={{ mr: 2 }}>
-                {resumeData.contact.country}
-              </Typography>
+              <TextField
+                variant="standard"
+                size="small"
+                value={resumeData.contact.country}
+                onChange={(e) => updateContact({ ...resumeData.contact, country: e.target.value })}
+                sx={{ mr: 2 }}
+              />
             )}
             {resumeData.contact.state && (
-              <Typography variant="body1" component="span">
-                {resumeData.contact.state}
-              </Typography>
+              <TextField
+                variant="standard"
+                size="small"
+                value={resumeData.contact.state}
+                onChange={(e) => updateContact({ ...resumeData.contact, state: e.target.value })}
+              />
             )}
           </Box>
 
           {resumeData.summary && (
             <>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h5" gutterBottom sx={getContentStyle()}>
                 Summary
               </Typography>
-              <Typography variant="body1" paragraph>
-                {resumeData.summary}
-              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                variant="standard"
+                value={resumeData.summary}
+                onChange={(e) => updateSummary(e.target.value)}
+                sx={{ mb: 2 }}
+              />
               <Divider sx={{ my: 2 }} />
             </>
           )}
 
           {resumeData.experiences.length > 0 && (
             <>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h5" gutterBottom sx={getContentStyle()}>
                 Experience
               </Typography>
               {resumeData.experiences.map((exp, index) => (
                 <Box key={index} sx={{ mb: 2 }}>
-                  <Typography variant="h6">
+                  <Typography variant="h6" sx={getContentStyle()}>
                     {exp.position} at {exp.company}
                   </Typography>
-                  <Typography variant="subtitle1" color="textSecondary">
+                  <Typography variant="subtitle1" color="textSecondary" sx={getContentStyle()}>
                     {exp.startDate} - {exp.endDate}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body1" sx={getContentStyle()}>
                     {exp.description}
                   </Typography>
                 </Box>
@@ -136,18 +195,18 @@ export default function Preview() {
 
           {resumeData.education.length > 0 && (
             <>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h5" gutterBottom sx={getContentStyle()}>
                 Education
               </Typography>
               {resumeData.education.map((edu, index) => (
                 <Box key={index} sx={{ mb: 2 }}>
-                  <Typography variant="h6">
+                  <Typography variant="h6" sx={getContentStyle()}>
                     {edu.degree} in {edu.field}
                   </Typography>
-                  <Typography variant="subtitle1">
+                  <Typography variant="subtitle1" sx={getContentStyle()}>
                     {edu.school}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={getContentStyle()}>
                     {edu.startDate} - {edu.endDate}
                   </Typography>
                 </Box>
@@ -158,10 +217,10 @@ export default function Preview() {
 
           {resumeData.skills.length > 0 && (
             <>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h5" gutterBottom sx={getContentStyle()}>
                 Skills
               </Typography>
-              <Typography variant="body1">
+              <Typography variant="body1" sx={getContentStyle()}>
                 {resumeData.skills.join(', ')}
               </Typography>
             </>
