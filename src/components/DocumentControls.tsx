@@ -4,9 +4,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Slider,
   Typography,
   SelectChangeEvent,
+  TextField,
+  Paper,
 } from '@mui/material';
 
 interface DocumentControlsProps {
@@ -59,14 +60,27 @@ export default function DocumentControls({
   };
 
   return (
-    <Box sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-      <FormControl sx={{ minWidth: 120 }}>
+    <Paper
+      sx={{
+        width: 280,
+        p: 2,
+        overflowY: 'auto',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+      }}
+    >
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Settings
+      </Typography>
+
+      <FormControl fullWidth size="small">
         <InputLabel>Page Size</InputLabel>
         <Select
           value={pageSize}
           label="Page Size"
           onChange={handlePageSizeChange}
-          size="small"
         >
           {pageSizes.map((size) => (
             <MenuItem key={size.value} value={size.value}>
@@ -76,13 +90,12 @@ export default function DocumentControls({
         </Select>
       </FormControl>
 
-      <FormControl sx={{ minWidth: 120 }}>
+      <FormControl fullWidth size="small">
         <InputLabel>Font</InputLabel>
         <Select
           value={font}
           label="Font"
           onChange={handleFontChange}
-          size="small"
         >
           {fonts.map((f) => (
             <MenuItem key={f} value={f}>
@@ -92,50 +105,35 @@ export default function DocumentControls({
         </Select>
       </FormControl>
 
-      <Box sx={{ minWidth: 120 }}>
-        <Typography gutterBottom variant="caption">
-          Font Size: {fontSize}
-        </Typography>
-        <Slider
-          value={fontSize}
-          min={8}
-          max={16}
-          step={0.5}
-          onChange={(_, value) => onFontSizeChange(value as number)}
-          valueLabelDisplay="auto"
-          size="small"
-        />
-      </Box>
+      <TextField
+        label="Font Size"
+        type="number"
+        value={fontSize}
+        onChange={(e) => onFontSizeChange(Number(e.target.value))}
+        inputProps={{ min: 8, max: 16, step: 0.5 }}
+        size="small"
+        fullWidth
+      />
 
-      <Box sx={{ minWidth: 120 }}>
-        <Typography gutterBottom variant="caption">
-          Line Spacing: {lineSpacing}
-        </Typography>
-        <Slider
-          value={lineSpacing}
-          min={1}
-          max={2}
-          step={0.1}
-          onChange={(_, value) => onLineSpacingChange(value as number)}
-          valueLabelDisplay="auto"
-          size="small"
-        />
-      </Box>
+      <TextField
+        label="Line Spacing"
+        type="number"
+        value={lineSpacing}
+        onChange={(e) => onLineSpacingChange(Number(e.target.value))}
+        inputProps={{ min: 1, max: 2, step: 0.1 }}
+        size="small"
+        fullWidth
+      />
 
-      <Box sx={{ minWidth: 120 }}>
-        <Typography gutterBottom variant="caption">
-          Margins: {margins}mm
-        </Typography>
-        <Slider
-          value={margins}
-          min={10}
-          max={30}
-          step={1}
-          onChange={(_, value) => onMarginsChange(value as number)}
-          valueLabelDisplay="auto"
-          size="small"
-        />
-      </Box>
-    </Box>
+      <TextField
+        label="Margins (mm)"
+        type="number"
+        value={margins}
+        onChange={(e) => onMarginsChange(Number(e.target.value))}
+        inputProps={{ min: 10, max: 30, step: 1 }}
+        size="small"
+        fullWidth
+      />
+    </Paper>
   );
 }

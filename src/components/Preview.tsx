@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Paper,
-  Typography,
-  Box,
-  Button,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Tooltip,
+    Container,
+    Paper,
+    Typography,
+    Box,
+    Button,
+    AppBar,
+    Toolbar,
+    IconButton,
+    Tooltip,
 } from '@mui/material';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -24,548 +24,556 @@ import { useResume } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
 import { KeyboardEvent, useRef, useState } from 'react';
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import FormatToolbar from './FormatToolbar';
 
 interface EditableSpanProps {
-  content: string;
-  onUpdate: (newContent: string) => void;
-  style?: React.CSSProperties;
-  className?: string;
-  allowFormatting?: boolean;
+    content: string;
+    onUpdate: (newContent: string) => void;
+    style?: React.CSSProperties;
+    className?: string;
+    allowFormatting?: boolean;
 }
 
 const EditableSpan: React.FC<EditableSpanProps> = ({ content, onUpdate, style, className, allowFormatting = false }) => {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const spanRef = useRef<HTMLSpanElement>(null);
+    const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+    const spanRef = useRef<HTMLSpanElement>(null);
 
-  const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
-    onUpdate(e.target.innerHTML);
-  };
+    const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
+        onUpdate(e.target.innerHTML);
+    };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLSpanElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      e.currentTarget.blur();
-    }
-  };
+    const handleKeyDown = (e: KeyboardEvent<HTMLSpanElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            e.currentTarget.blur();
+        }
+    };
 
-  const handleMouseUp = () => {
-    if (!allowFormatting) return;
+    const handleMouseUp = () => {
+        if (!allowFormatting) return;
 
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed && spanRef.current) {
-      setAnchorEl(spanRef.current);
-    }
-  };
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && spanRef.current) {
+            setAnchorEl(spanRef.current);
+        }
+    };
 
-  const handleFormat = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-  };
+    const handleFormat = (command: string, value?: string) => {
+        document.execCommand(command, false, value);
+    };
 
-  return (
-    <>
-      <span
-        ref={spanRef}
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        onMouseUp={handleMouseUp}
-        style={{ ...style, cursor: 'text', outline: 'none' }}
-        className={className}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
-      {allowFormatting && (
-        <FormatToolbar
-          anchorEl={anchorEl}
-          onClose={() => setAnchorEl(null)}
-          onFormat={handleFormat}
-        />
-      )}
-    </>
-  );
+    return (
+        <>
+            <span
+                ref={spanRef}
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                onMouseUp={handleMouseUp}
+                style={{ ...style, cursor: 'text', outline: 'none' }}
+                className={className}
+                dangerouslySetInnerHTML={{ __html: content }}
+            />
+            {allowFormatting && (
+                <FormatToolbar
+                    anchorEl={anchorEl}
+                    onClose={() => setAnchorEl(null)}
+                    onFormat={handleFormat}
+                />
+            )}
+        </>
+    );
 };
 
 interface Section {
-  id: string;
-  title: string;
-  content: React.ReactNode;
+    id: string;
+    title: string;
+    content: React.ReactNode;
 }
 
 interface SortableSectionProps {
-  id: string;
-  children: React.ReactNode;
+    id: string;
+    children: React.ReactNode;
 }
 
 function SortableSection({ id, children }: SortableSectionProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id });
 
-  const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-    position: 'relative' as const,
-    zIndex: isDragging ? 1 : 'auto',
-  };
+    const style = {
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 1 : 'auto',
+    };
 
-  return (
-    <Box ref={setNodeRef} style={style}>
-      <Box sx={{ mb: 3, position: 'relative' }}>
-        <Box
-          {...attributes}
-          {...listeners}
-          sx={{
-            position: 'absolute',
-            left: -30,
-            top: 0,
-            cursor: 'grab',
-            opacity: 0.3,
-            '&:hover': { opacity: 1 },
-            '@media print': {
-              display: 'none'
-            },
-            display: 'flex',
-            alignItems: 'center',
-            height: '100%'
-          }}
-        >
-          <DragIndicatorIcon />
+    return (
+        <Box ref={setNodeRef} style={style}>
+            <Box sx={{ mb: 3, position: 'relative' }}>
+                <Box
+                    {...attributes}
+                    {...listeners}
+                    sx={{
+                        position: 'absolute',
+                        left: -30,
+                        top: 0,
+                        cursor: 'grab',
+                        opacity: 0.3,
+                        '&:hover': { opacity: 1 },
+                        '@media print': {
+                            display: 'none'
+                        },
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%'
+                    }}
+                >
+                    <DragIndicatorIcon />
+                </Box>
+                {children}
+            </Box>
         </Box>
-        {children}
-      </Box>
-    </Box>
-  );
+    );
 }
 
 const pageSizes = {
-  A4: { width: 210, height: 297 },
-  LETTER: { width: 216, height: 279 },
-  LEGAL: { width: 216, height: 356 },
+    A4: { width: 210, height: 297 },
+    LETTER: { width: 216, height: 279 },
+    LEGAL: { width: 216, height: 356 },
 };
 
 export default function Preview() {
-  const navigate = useNavigate();
-  const {
-    resumeData,
-    updateContact,
-    updateSummary,
-    updateDocumentStyle,
-    importData,
-    exportData,
-    resetData,
-    updateExperiences,
-    updateEducation
-  } = useResume();
-  const { documentStyle } = resumeData;
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const navigate = useNavigate();
+    const {
+        resumeData,
+        updateContact,
+        updateSummary,
+        updateDocumentStyle,
+        importData,
+        exportData,
+        resetData,
+        updateExperiences,
+        updateEducation
+    } = useResume();
+    const { documentStyle } = resumeData;
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [sections, setSections] = useState<Section[]>([
-    { id: 'summary', title: 'SUMMARY', content: null },
-    { id: 'experience', title: 'EXPERIENCE', content: null },
-    { id: 'education', title: 'EDUCATION', content: null },
-    { id: 'skills', title: 'SKILLS', content: null },
-    { id: 'courses', title: 'COURSES', content: null },
-  ]);
+    const [sections, setSections] = useState<Section[]>([
+        { id: 'summary', title: 'SUMMARY', content: null },
+        { id: 'experience', title: 'EXPERIENCE', content: null },
+        { id: 'education', title: 'EDUCATION', content: null },
+        { id: 'skills', title: 'SKILLS', content: null },
+        { id: 'courses', title: 'COURSES', content: null },
+    ]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      const oldIndex = sections.findIndex(
-        (section) => section.id === active.id
-      );
-      const newIndex = sections.findIndex(
-        (section) => section.id === over.id
-      );
+        if (over && active.id !== over.id) {
+            const oldIndex = sections.findIndex(
+                (section) => section.id === active.id
+            );
+            const newIndex = sections.findIndex(
+                (section) => section.id === over.id
+            );
 
-      setSections(arrayMove(sections, oldIndex, newIndex));
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    const element = document.getElementById('resume-preview');
-    if (!element) return;
-
-    const pageSize = pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4;
-    const opt = {
-      margin: documentStyle.margins / 10, // Convert mm to cm
-      filename: 'resume.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        letterRendering: true,
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: documentStyle.pageSize?.toLowerCase() || 'a4',
-        orientation: 'portrait',
-      },
+            setSections(arrayMove(sections, oldIndex, newIndex));
+        }
     };
 
-    html2pdf().set(opt).from(element).save();
-  };
+    const handleDownloadPDF = () => {
+        const element = document.getElementById('resume-preview');
+        if (!element) return;
 
-  const handleExportJSON = () => {
-    const jsonData = exportData();
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'resume-data.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+        const pageSize = pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4;
+        const opt = {
+            margin: documentStyle.margins / 10, // Convert mm to cm
+            filename: 'resume.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                letterRendering: true,
+            },
+            jsPDF: {
+                unit: 'mm',
+                format: documentStyle.pageSize?.toLowerCase() || 'a4',
+                orientation: 'portrait',
+            },
+        };
 
-  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const jsonData = e.target?.result as string;
-          importData(jsonData);
-        } catch (error) {
-          alert('Failed to import data. Please check the file format.');
+        html2pdf().set(opt).from(element).save();
+    };
+
+    const handleExportJSON = () => {
+        const jsonData = exportData();
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resume-data.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const jsonData = e.target?.result as string;
+                    importData(jsonData);
+                } catch (error) {
+                    alert('Failed to import data. Please check the file format.');
+                }
+            };
+            reader.readAsText(file);
         }
-      };
-      reader.readAsText(file);
-    }
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
-  const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-      resetData();
-    }
-  };
+    const handleReset = () => {
+        if (window.confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+            resetData();
+        }
+    };
 
-  const getContentStyle = () => ({
-    fontFamily: documentStyle.font.toLowerCase().replace(/_/g, ' '),
-    fontSize: `${documentStyle.fontSize}pt`,
-    lineHeight: documentStyle.lineSpacing,
-  });
+    const getContentStyle = () => ({
+        fontFamily: documentStyle.font.toLowerCase().replace(/_/g, ' '),
+        fontSize: `${documentStyle.fontSize}pt`,
+        lineHeight: documentStyle.lineSpacing,
+    });
 
-  const renderContactIcon = (icon: React.ReactNode, content: string, onUpdate: (value: string) => void) => {
-    if (!content) return null;
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
-        {icon}
-        <EditableSpan
-          content={content}
-          onUpdate={onUpdate}
-          style={getContentStyle()}
-        />
-      </Box>
-    );
-  };
-
-  const renderSectionTitle = (title: string) => (
-    <Typography
-      variant="h6"
-      sx={{
-        ...getContentStyle(),
-        borderBottom: '2px solid black',
-        pb: 0.5,
-        mb: 2,
-        fontWeight: 'bold',
-      }}
-    >
-      {title}
-    </Typography>
-  );
-
-  return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" color="transparent">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Resume Preview
-          </Typography>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".json"
-            style={{ display: 'none' }}
-            onChange={handleImportJSON}
-          />
-          <Tooltip title="Import JSON">
-            <IconButton
-              color="primary"
-              onClick={() => fileInputRef.current?.click()}
-              sx={{ mr: 1 }}
-            >
-              <UploadIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Export JSON">
-            <IconButton
-              color="primary"
-              onClick={handleExportJSON}
-              sx={{ mr: 1 }}
-            >
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Reset Data">
-            <IconButton
-              color="error"
-              onClick={handleReset}
-              sx={{ mr: 2 }}
-            >
-              <RestartAltIcon />
-            </IconButton>
-          </Tooltip>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleDownloadPDF}
-            sx={{ mr: 2 }}
-          >
-            Download PDF
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => navigate('/')}
-          >
-            Back to Editor
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      <DocumentControls
-        font={documentStyle.font}
-        fontSize={documentStyle.fontSize}
-        lineSpacing={documentStyle.lineSpacing}
-        margins={documentStyle.margins}
-        pageSize={documentStyle.pageSize}
-        onFontChange={(font) => updateDocumentStyle({ font })}
-        onFontSizeChange={(fontSize) => updateDocumentStyle({ fontSize })}
-        onLineSpacingChange={(lineSpacing) => updateDocumentStyle({ lineSpacing })}
-        onMarginsChange={(margins) => updateDocumentStyle({ margins })}
-        onPageSizeChange={(pageSize) => updateDocumentStyle({ pageSize })}
-      />
-
-      <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-        <Paper
-          id="resume-preview"
-          sx={{
-            width: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).width}mm`,
-            height: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height}mm`,
-            margin: '0 auto',
-            backgroundColor: 'white',
-            color: 'black',
-            position: 'relative',
-            ...getContentStyle(),
-          }}
-        >
-          <Box
-            sx={{
-              position: 'absolute',
-              top: `${documentStyle.margins}mm`,
-              left: `${documentStyle.margins}mm`,
-              right: `${documentStyle.margins}mm`,
-              bottom: `${documentStyle.margins}mm`,
-              overflow: 'auto',
-            }}
-          >
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Typography variant="h4" component="div" sx={{ mb: 2 }}>
+    const renderContactIcon = (icon: React.ReactNode, content: string, onUpdate: (value: string) => void) => {
+        if (!content) return null;
+        return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                {icon}
                 <EditableSpan
-                  content={resumeData.contact.fullName}
-                  onUpdate={(value) => updateContact({ ...resumeData.contact, fullName: value })}
-                  style={{
-                    ...getContentStyle(),
-                    fontSize: `${documentStyle.fontSize * 1.5}pt`,
-                    fontWeight: 'bold',
-                  }}
-                />
-              </Typography>
-
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
-                {renderContactIcon(
-                  <EmailIcon fontSize="small" />,
-                  resumeData.contact.email,
-                  (value) => updateContact({ ...resumeData.contact, email: value })
-                )}
-                {renderContactIcon(
-                  <PhoneIcon fontSize="small" />,
-                  resumeData.contact.phone,
-                  (value) => updateContact({ ...resumeData.contact, phone: value })
-                )}
-                {renderContactIcon(
-                  <LinkedInIcon fontSize="small" />,
-                  resumeData.contact.linkedin,
-                  (value) => updateContact({ ...resumeData.contact, linkedin: value })
-                )}
-                {renderContactIcon(
-                  <LanguageIcon fontSize="small" />,
-                  resumeData.contact.website,
-                  (value) => updateContact({ ...resumeData.contact, website: value })
-                )}
-              </Box>
-
-              {(resumeData.contact.country && resumeData.contact.showCountry || resumeData.contact.state && resumeData.contact.showState) && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
-                  <LocationOnIcon fontSize="small" />
-                  <EditableSpan
-                    content={`${resumeData.contact.showCountry ? resumeData.contact.country : ''}${resumeData.contact.showCountry && resumeData.contact.showState && resumeData.contact.country && resumeData.contact.state ? ', ' : ''}${resumeData.contact.showState ? resumeData.contact.state : ''}`}
-                    onUpdate={(value) => {
-                      const [country, state] = value.split(',').map(s => s.trim());
-                      updateContact({ ...resumeData.contact, country, state });
-                    }}
+                    content={content}
+                    onUpdate={onUpdate}
                     style={getContentStyle()}
-                  />
-                </Box>
-              )}
+                />
             </Box>
+        );
+    };
 
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sections.map(section => section.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {sections.map((section) => (
-                  <SortableSection key={section.id} id={section.id}>
-                    <Box sx={{ mb: 3 }}>
-                      {section.id === 'summary' && resumeData.summary && (
-                        <>
-                          {renderSectionTitle(section.title)}
-                          <EditableSpan
-                            content={resumeData.summary}
-                            onUpdate={updateSummary}
-                            style={getContentStyle()}
-                            allowFormatting
-                          />
-                        </>
-                      )}
+    const renderSectionTitle = (title: string) => (
+        <Typography
+            variant="h6"
+            sx={{
+                ...getContentStyle(),
+                borderBottom: '2px solid black',
+                pb: 0.5,
+                mb: 2,
+                fontWeight: 'bold',
+            }}
+        >
+            {title}
+        </Typography>
+    );
 
-                      {section.id === 'experience' && resumeData.experiences.length > 0 && (
-                        <>
-                          {renderSectionTitle(section.title)}
-                          {resumeData.experiences.map((exp, idx) => (
-                            <Box key={idx} sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                  {exp.position}
-                                </Typography>
-                                <Typography variant="body2" sx={getContentStyle()}>
-                                  {exp.startDate} - {exp.endDate}
-                                </Typography>
-                              </Box>
-                              <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
-                                {exp.company}
-                              </Typography>
-                              <EditableSpan
-                                content={exp.description}
-                                onUpdate={(value) => {
-                                  const newExperiences = [...resumeData.experiences];
-                                  newExperiences[idx] = { ...exp, description: value };
-                                  updateExperiences(newExperiences);
+    return (
+        <Box>
+            <AppBar position="static" color="transparent">
+                <Toolbar>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        Resume Preview
+                    </Typography>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept=".json"
+                        style={{ display: 'none' }}
+                        onChange={handleImportJSON}
+                    />
+                    <Tooltip title="Import JSON">
+                        <IconButton
+                            color="primary"
+                            onClick={() => fileInputRef.current?.click()}
+                            sx={{ mr: 1 }}
+                        >
+                            <UploadIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Export JSON">
+                        <IconButton
+                            color="primary"
+                            onClick={handleExportJSON}
+                            sx={{ mr: 1 }}
+                        >
+                            <DownloadIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Reset Data">
+                        <IconButton
+                            color="error"
+                            onClick={handleReset}
+                            sx={{ mr: 2 }}
+                        >
+                            <RestartAltIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleDownloadPDF}
+                        sx={{ mr: 2 }}
+                    >
+                        Download PDF
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => navigate('/')}
+                    >
+                        Back to Editor
+                    </Button>
+                </Toolbar>
+            </AppBar>
+            <Box sx={{ flexGrow: 1, display: 'flex' }}>
+                <Box sx={{ width: 280, flexShrink: 0 }}>
+                    <DocumentControls
+                        font={documentStyle.font}
+                        fontSize={documentStyle.fontSize}
+                        lineSpacing={documentStyle.lineSpacing}
+                        margins={documentStyle.margins}
+                        pageSize={documentStyle.pageSize}
+                        onFontChange={(font) => updateDocumentStyle({ font })}
+                        onFontSizeChange={(fontSize) => updateDocumentStyle({ fontSize })}
+                        onLineSpacingChange={(lineSpacing) => updateDocumentStyle({ lineSpacing })}
+                        onMarginsChange={(margins) => updateDocumentStyle({ margins })}
+                        onPageSizeChange={(pageSize) => updateDocumentStyle({ pageSize })}
+                    />
+                </Box>
+                <Box sx={{ flexGrow: 1 }}>
+
+
+
+
+                    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+                        <Paper
+                            id="resume-preview"
+                            sx={{
+                                width: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).width}mm`,
+                                height: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height}mm`,
+                                margin: '0 auto',
+                                backgroundColor: 'white',
+                                color: 'black',
+                                position: 'relative',
+                                ...getContentStyle(),
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: `${documentStyle.margins}mm`,
+                                    left: `${documentStyle.margins}mm`,
+                                    right: `${documentStyle.margins}mm`,
+                                    bottom: `${documentStyle.margins}mm`,
+                                    overflow: 'auto',
                                 }}
-                                style={getContentStyle()}
-                                allowFormatting
-                              />
+                            >
+                                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                                    <Typography variant="h4" component="div" sx={{ mb: 2 }}>
+                                        <EditableSpan
+                                            content={resumeData.contact.fullName}
+                                            onUpdate={(value) => updateContact({ ...resumeData.contact, fullName: value })}
+                                            style={{
+                                                ...getContentStyle(),
+                                                fontSize: `${documentStyle.fontSize * 1.5}pt`,
+                                                fontWeight: 'bold',
+                                            }}
+                                        />
+                                    </Typography>
+
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
+                                        {renderContactIcon(
+                                            <EmailIcon fontSize="small" />,
+                                            resumeData.contact.email,
+                                            (value) => updateContact({ ...resumeData.contact, email: value })
+                                        )}
+                                        {renderContactIcon(
+                                            <PhoneIcon fontSize="small" />,
+                                            resumeData.contact.phone,
+                                            (value) => updateContact({ ...resumeData.contact, phone: value })
+                                        )}
+                                        {renderContactIcon(
+                                            <LinkedInIcon fontSize="small" />,
+                                            resumeData.contact.linkedin,
+                                            (value) => updateContact({ ...resumeData.contact, linkedin: value })
+                                        )}
+                                        {renderContactIcon(
+                                            <LanguageIcon fontSize="small" />,
+                                            resumeData.contact.website,
+                                            (value) => updateContact({ ...resumeData.contact, website: value })
+                                        )}
+                                    </Box>
+
+                                    {(resumeData.contact.country && resumeData.contact.showCountry || resumeData.contact.state && resumeData.contact.showState) && (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
+                                            <LocationOnIcon fontSize="small" />
+                                            <EditableSpan
+                                                content={`${resumeData.contact.showCountry ? resumeData.contact.country : ''}${resumeData.contact.showCountry && resumeData.contact.showState && resumeData.contact.country && resumeData.contact.state ? ', ' : ''}${resumeData.contact.showState ? resumeData.contact.state : ''}`}
+                                                onUpdate={(value) => {
+                                                    const [country, state] = value.split(',').map(s => s.trim());
+                                                    updateContact({ ...resumeData.contact, country, state });
+                                                }}
+                                                style={getContentStyle()}
+                                            />
+                                        </Box>
+                                    )}
+                                </Box>
+
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={sections.map(section => section.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {sections.map((section) => (
+                                            <SortableSection key={section.id} id={section.id}>
+                                                <Box sx={{ mb: 3 }}>
+                                                    {section.id === 'summary' && resumeData.summary && (
+                                                        <>
+                                                            {renderSectionTitle(section.title)}
+                                                            <EditableSpan
+                                                                content={resumeData.summary}
+                                                                onUpdate={updateSummary}
+                                                                style={getContentStyle()}
+                                                                allowFormatting
+                                                            />
+                                                        </>
+                                                    )}
+
+                                                    {section.id === 'experience' && resumeData.experiences.length > 0 && (
+                                                        <>
+                                                            {renderSectionTitle(section.title)}
+                                                            {resumeData.experiences.map((exp, idx) => (
+                                                                <Box key={idx} sx={{ mb: 2 }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                                                            {exp.position}
+                                                                        </Typography>
+                                                                        <Typography variant="body2" sx={getContentStyle()}>
+                                                                            {exp.startDate} - {exp.endDate}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
+                                                                        {exp.company}
+                                                                    </Typography>
+                                                                    <EditableSpan
+                                                                        content={exp.description}
+                                                                        onUpdate={(value) => {
+                                                                            const newExperiences = [...resumeData.experiences];
+                                                                            newExperiences[idx] = { ...exp, description: value };
+                                                                            updateExperiences(newExperiences);
+                                                                        }}
+                                                                        style={getContentStyle()}
+                                                                        allowFormatting
+                                                                    />
+                                                                </Box>
+                                                            ))}
+                                                        </>
+                                                    )}
+
+                                                    {section.id === 'education' && resumeData.education.length > 0 && (
+                                                        <>
+                                                            {renderSectionTitle(section.title)}
+                                                            {resumeData.education.map((edu, idx) => (
+                                                                <Box key={idx} sx={{ mb: 2 }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                                                            {edu.school}
+                                                                        </Typography>
+                                                                        <Typography variant="body2" sx={getContentStyle()}>
+                                                                            {edu.startDate} - {edu.endDate}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    <Typography variant="subtitle2" sx={getContentStyle()}>
+                                                                        {edu.degree} • {edu.field}
+                                                                    </Typography>
+                                                                    <EditableSpan
+                                                                        content={edu.description || ''}
+                                                                        onUpdate={(value) => {
+                                                                            const newEducation = [...resumeData.education];
+                                                                            newEducation[idx] = { ...edu, description: value };
+                                                                            updateEducation(newEducation);
+                                                                        }}
+                                                                        style={getContentStyle()}
+                                                                        allowFormatting
+                                                                    />
+                                                                </Box>
+                                                            ))}
+                                                        </>
+                                                    )}
+
+                                                    {section.id === 'skills' && resumeData.skills.length > 0 && (
+                                                        <>
+                                                            {renderSectionTitle(section.title)}
+                                                            <Typography variant="body1" sx={getContentStyle()}>
+                                                                {resumeData.skills.join(' • ')}
+                                                            </Typography>
+                                                        </>
+                                                    )}
+
+                                                    {section.id === 'courses' && (
+                                                        <>
+                                                            {renderSectionTitle(section.title)}
+                                                            <Typography variant="body1" sx={getContentStyle()}>
+                                                                JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
+                                                            </Typography>
+                                                        </>
+                                                    )}
+                                                </Box>
+                                            </SortableSection>
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
                             </Box>
-                          ))}
-                        </>
-                      )}
-
-                      {section.id === 'education' && resumeData.education.length > 0 && (
-                        <>
-                          {renderSectionTitle(section.title)}
-                          {resumeData.education.map((edu, idx) => (
-                            <Box key={idx} sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                  {edu.school}
-                                </Typography>
-                                <Typography variant="body2" sx={getContentStyle()}>
-                                  {edu.startDate} - {edu.endDate}
-                                </Typography>
-                              </Box>
-                              <Typography variant="subtitle2" sx={getContentStyle()}>
-                                {edu.degree} • {edu.field}
-                              </Typography>
-                              <EditableSpan
-                                content={edu.description || ''}
-                                onUpdate={(value) => {
-                                  const newEducation = [...resumeData.education];
-                                  newEducation[idx] = { ...edu, description: value };
-                                  updateEducation(newEducation);
-                                }}
-                                style={getContentStyle()}
-                                allowFormatting
-                              />
-                            </Box>
-                          ))}
-                        </>
-                      )}
-
-                      {section.id === 'skills' && resumeData.skills.length > 0 && (
-                        <>
-                          {renderSectionTitle(section.title)}
-                          <Typography variant="body1" sx={getContentStyle()}>
-                            {resumeData.skills.join(' • ')}
-                          </Typography>
-                        </>
-                      )}
-
-                      {section.id === 'courses' && (
-                        <>
-                          {renderSectionTitle(section.title)}
-                          <Typography variant="body1" sx={getContentStyle()}>
-                            JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
-                          </Typography>
-                        </>
-                      )}
-                    </Box>
-                  </SortableSection>
-                ))}
-              </SortableContext>
-            </DndContext>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
-  );
+                        </Paper>
+                    </Container>
+                </Box>
+            </Box>
+        </Box>
+    );
 }
