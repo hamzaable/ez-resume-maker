@@ -21,6 +21,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
+import { ResumeData } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
 import { KeyboardEvent, useRef, useState } from 'react';
 import {
@@ -177,7 +178,8 @@ export default function Preview() {
         exportData,
         resetData,
         updateExperiences,
-        updateEducation
+        updateEducation,
+        setResumeData
     } = useResume();
     const { documentStyle } = resumeData;
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -311,61 +313,73 @@ export default function Preview() {
         </Typography>
     );
 
+    const updateCvName = (newName: string) => {
+        setResumeData((prev: ResumeData) => ({ ...prev, cvName: newName }));
+    };
+
     return (
         <Box>
             <AppBar position="static" color="transparent">
                 <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        Resume Preview
-                    </Typography>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept=".json"
-                        style={{ display: 'none' }}
-                        onChange={handleImportJSON}
-                    />
-                    <Tooltip title="Import JSON">
-                        <IconButton
-                            color="primary"
-                            onClick={() => fileInputRef.current?.click()}
-                            sx={{ mr: 1 }}
-                        >
-                            <UploadIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Export JSON">
-                        <IconButton
-                            color="primary"
-                            onClick={handleExportJSON}
-                            sx={{ mr: 1 }}
-                        >
-                            <DownloadIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Reset Data">
-                        <IconButton
-                            color="error"
-                            onClick={handleReset}
-                            sx={{ mr: 2 }}
-                        >
-                            <RestartAltIcon />
-                        </IconButton>
-                    </Tooltip>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleDownloadPDF}
-                        sx={{ mr: 2 }}
-                    >
-                        Download PDF
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        onClick={() => navigate('/')}
-                    >
-                        Back to Editor
-                    </Button>
+                    <div className='flex justify-between items-center w-full'>
+                        <div>
+                            <EditableSpan
+                                content={resumeData.cvName || 'Untitled'}
+                                onUpdate={updateCvName}
+                                style={{ fontSize: '1.25rem', fontWeight: 'bold' }}
+                            />
+                        </div>
+                        <div>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                accept=".json"
+                                style={{ display: 'none' }}
+                                onChange={handleImportJSON}
+                            />
+                            <Tooltip title="Import JSON">
+                                <IconButton
+                                    color="primary"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    sx={{ mr: 1 }}
+                                >
+                                    <UploadIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Export JSON">
+                                <IconButton
+                                    color="primary"
+                                    onClick={handleExportJSON}
+                                    sx={{ mr: 1 }}
+                                >
+                                    <DownloadIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Reset Data">
+                                <IconButton
+                                    color="error"
+                                    onClick={handleReset}
+                                    sx={{ mr: 2 }}
+                                >
+                                    <RestartAltIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleDownloadPDF}
+                                sx={{ mr: 2 }}
+                            >
+                                Download PDF
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={() => navigate('/')}
+                            >
+                                Back to Editor
+                            </Button>
+                        </div>
+                    </div>
                 </Toolbar>
             </AppBar>
             <Box sx={{ flexGrow: 1, display: 'flex' }}>
@@ -573,6 +587,6 @@ export default function Preview() {
                     </Container>
                 </Box>
             </Box>
-        </Box>
+        </Box >
     );
 }

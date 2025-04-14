@@ -37,7 +37,8 @@ interface DocumentStyle {
   pageSize: string;
 }
 
-interface ResumeData {
+export interface ResumeData {
+  cvName: string;
   contact: ContactInfo;
   experiences: Experience[];
   education: Education[];
@@ -57,9 +58,11 @@ interface ResumeContextType {
   importData: (jsonData: string) => void;
   exportData: () => string;
   resetData: () => void;
+  setResumeData: React.Dispatch<React.SetStateAction<ResumeData>>;
 }
 
 const defaultResumeData: ResumeData = {
+  cvName: 'My Resume',
   contact: {
     fullName: '',
     email: '',
@@ -157,6 +160,7 @@ export function ResumeProvider({ children }: { children: ReactNode }) {
         importData,
         exportData,
         resetData,
+        setResumeData,
       }}
     >
       {children}
