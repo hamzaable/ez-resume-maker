@@ -34,6 +34,7 @@ interface DocumentStyle {
   fontSize: number;
   lineSpacing: number;
   margins: number;
+  pageSize: string;
 }
 
 interface ResumeData {
@@ -79,6 +80,7 @@ const defaultResumeData: ResumeData = {
     fontSize: 11,
     lineSpacing: 1.5,
     margins: 20,
+    pageSize: 'A4',
   },
 };
 
