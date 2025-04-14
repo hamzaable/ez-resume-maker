@@ -45,12 +45,14 @@ function SortableChip({ id, skill, onDelete }: SortableChipProps) {
   } = useSortable({ id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     transition,
     opacity: isDragging ? 0.6 : 1,
     display: 'inline-flex',
     alignItems: 'center',
     margin: '4px',
+    position: 'relative' as const,
+    zIndex: isDragging ? 1 : 'auto',
   };
 
   return (
