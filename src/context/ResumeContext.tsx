@@ -8,6 +8,8 @@ interface ContactInfo {
   website: string;
   country: string;
   state: string;
+  showState: boolean;
+  showCountry: boolean;
 }
 
 interface Experience {
@@ -65,6 +67,8 @@ const defaultResumeData: ResumeData = {
     website: '',
     country: '',
     state: '',
+    showState: true,
+    showCountry: true,
   },
   experiences: [],
   education: [],

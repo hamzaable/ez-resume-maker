@@ -12,14 +12,19 @@ import { useResume } from '../../context/ResumeContext';
 
 export default function ContactForm() {
   const { resumeData, updateContact } = useResume();
-  const [showState, setShowState] = useState(true);
-  const [showCountry, setShowCountry] = useState(true);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     updateContact({
       ...resumeData.contact,
       [name]: value
+    });
+  };
+
+  const handleVisibilityChange = (field: 'showState' | 'showCountry', value: boolean) => {
+    updateContact({
+      ...resumeData.contact,
+      [field]: value
     });
   };
 
@@ -82,8 +87,8 @@ export default function ContactForm() {
             <FormControlLabel
               control={
                 <Switch
-                  checked={showCountry}
-                  onChange={(e) => setShowCountry(e.target.checked)}
+                  checked={resumeData.contact.showCountry}
+                  onChange={(e) => handleVisibilityChange('showCountry', e.target.checked)}
                 />
               }
               label="Show on resume"
@@ -103,8 +108,8 @@ export default function ContactForm() {
             <FormControlLabel
               control={
                 <Switch
-                  checked={showState}
-                  onChange={(e) => setShowState(e.target.checked)}
+                  checked={resumeData.contact.showState}
+                  onChange={(e) => handleVisibilityChange('showState', e.target.checked)}
                 />
               }
               label="Show on resume"

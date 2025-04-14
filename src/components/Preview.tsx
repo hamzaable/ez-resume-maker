@@ -436,11 +436,11 @@ export default function Preview() {
               )}
             </Box>
 
-            {(resumeData.contact.country || resumeData.contact.state) && (
+            {(resumeData.contact.country && resumeData.contact.showCountry || resumeData.contact.state && resumeData.contact.showState) && (
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
                 <LocationOnIcon fontSize="small" />
                 <EditableSpan
-                  content={`${resumeData.contact.country}${resumeData.contact.country && resumeData.contact.state ? ', ' : ''}${resumeData.contact.state}`}
+                  content={`${resumeData.contact.showCountry ? resumeData.contact.country : ''}${resumeData.contact.showCountry && resumeData.contact.showState && resumeData.contact.country && resumeData.contact.state ? ', ' : ''}${resumeData.contact.showState ? resumeData.contact.state : ''}`}
                   onUpdate={(value) => {
                     const [country, state] = value.split(',').map(s => s.trim());
                     updateContact({ ...resumeData.contact, country, state });
