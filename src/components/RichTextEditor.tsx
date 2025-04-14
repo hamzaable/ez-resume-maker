@@ -18,6 +18,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   const [showToolbar, setShowToolbar] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const lastSelection = useRef<Range | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -31,15 +32,34 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (editorRef.current && value !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = value;
+    }
+  }, [value]);
+
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      lastSelection.current = selection.getRangeAt(0);
+    }
+  };
+
+  const restoreSelection = () => {
+    if (lastSelection.current && editorRef.current) {
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(lastSelection.current);
+      }
+    }
+  };
+
   const handleFormat = (command: string, value?: string) => {
-    const selection = document.getSelection();
-    if (!selection?.rangeCount) return;
-
+    saveSelection();
     document.execCommand(command, false, value);
-
+    restoreSelection();
     if (editorRef.current) {
-      // Ensure editor keeps focus
-      editorRef.current.focus();
       onChange(editorRef.current.innerHTML);
     }
   };
@@ -62,7 +82,6 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
   };
 
   const handleBlur = (e: React.FocusEvent) => {
-    // Don't hide toolbar if clicking toolbar buttons
     if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
       return;
     }
@@ -77,6 +96,13 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     if (selection && !selection.isCollapsed) {
       setShowToolbar(true);
     }
+  };
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    if (e.currentTarget.innerHTML === '<br>') {
+      e.currentTarget.innerHTML = '';
+    }
+    onChange(e.currentTarget.innerHTML);
   };
 
   return (
@@ -150,7 +176,8 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         onKeyDown={handleKeyDown}
         onMouseUp={handleMouseUp}
         onPaste={handlePaste}
-        dangerouslySetInnerHTML={{ __html: value }}
+        onInput={handleInput}
+        data-placeholder={placeholder}
         style={{
           minHeight,
           padding: '8px 12px',
@@ -161,12 +188,6 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           fontFamily: 'inherit',
           fontSize: 'inherit',
           lineHeight: 'inherit',
-        }}
-        onInput={(e) => {
-          if (e.currentTarget.innerHTML === '<br>') {
-            e.currentTarget.innerHTML = '';
-          }
-          onChange(e.currentTarget.innerHTML);
         }}
       />
     </Box>
