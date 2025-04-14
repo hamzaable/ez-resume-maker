@@ -341,7 +341,7 @@ export default function Preview() {
             setContentHeight(height);
             const pageHeight = (pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height * 3.78; // Convert mm to px
             const availableHeight = pageHeight - (documentStyle.margins * 2 * 3.78); // Account for margins
-
+            console.log(height, availableHeight);
             if (height > availableHeight) {
                 // Find the section that would fit best on the first page
                 const sections = contentRef.current.querySelectorAll('.resume-section');
@@ -349,7 +349,7 @@ export default function Preview() {
                 let splitAt = 0;
 
                 // Add some padding to ensure no overflow
-                const safeHeight = availableHeight * 0.9; // Use 90% of available height to be safe
+                const safeHeight = availableHeight * 0.76; // Use 90% of available height to be safe
 
                 for (let i = 0; i < sections.length; i++) {
                     const section = sections[i] as HTMLElement;

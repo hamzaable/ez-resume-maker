@@ -187,7 +187,7 @@ export default function DocumentControls({
                                             onChange={(e) => onShowNameOnPage2Change(e.target.checked)}
                                         />
                                     }
-                                    label="Show Name on Page 2"
+                                    label="Show Name on Page"
                                 />
                             </>
                         )}
