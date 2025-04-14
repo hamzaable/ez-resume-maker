@@ -3,7 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material';
 import ResumeBuilder from './components/ResumeBuilder';
 import Preview from './components/Preview';
 import { ResumeProvider } from './context/ResumeContext';
-
+import './App.css';
 const theme = createTheme({
   palette: {
     mode: 'dark',
