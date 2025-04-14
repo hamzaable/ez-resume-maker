@@ -24,37 +24,65 @@ import { useResume } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
 import { KeyboardEvent, useRef, useState } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import FormatToolbar from './FormatToolbar';
 
 interface EditableSpanProps {
   content: string;
   onUpdate: (newContent: string) => void;
   style?: React.CSSProperties;
   className?: string;
+  allowFormatting?: boolean;
 }
 
-const EditableSpan: React.FC<EditableSpanProps> = ({ content, onUpdate, style, className }) => {
+const EditableSpan: React.FC<EditableSpanProps> = ({ content, onUpdate, style, className, allowFormatting = false }) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
+
   const handleBlur = (e: React.FocusEvent<HTMLSpanElement>) => {
-    onUpdate(e.target.textContent || '');
+    onUpdate(e.target.innerHTML);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLSpanElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       e.currentTarget.blur();
     }
   };
 
+  const handleMouseUp = () => {
+    if (!allowFormatting) return;
+
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && spanRef.current) {
+      setAnchorEl(spanRef.current);
+    }
+  };
+
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+  };
+
   return (
-    <span
-      contentEditable
-      suppressContentEditableWarning
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      style={{ ...style, cursor: 'text', outline: 'none' }}
-      className={className}
-    >
-      {content}
-    </span>
+    <>
+      <span
+        ref={spanRef}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        onMouseUp={handleMouseUp}
+        style={{ ...style, cursor: 'text', outline: 'none' }}
+        className={className}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+      {allowFormatting && (
+        <FormatToolbar
+          anchorEl={anchorEl}
+          onClose={() => setAnchorEl(null)}
+          onFormat={handleFormat}
+        />
+      )}
+    </>
   );
 };
 
@@ -66,7 +94,17 @@ interface Section {
 
 export default function Preview() {
   const navigate = useNavigate();
-  const { resumeData, updateContact, updateSummary, updateDocumentStyle, importData, exportData, resetData } = useResume();
+  const {
+    resumeData,
+    updateContact,
+    updateSummary,
+    updateDocumentStyle,
+    importData,
+    exportData,
+    resetData,
+    updateExperiences,
+    updateEducation
+  } = useResume();
   const { documentStyle } = resumeData;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -392,6 +430,7 @@ export default function Preview() {
                                   content={resumeData.summary}
                                   onUpdate={updateSummary}
                                   style={getContentStyle()}
+                                  allowFormatting
                                 />
                               </>
                             )}
@@ -412,9 +451,16 @@ export default function Preview() {
                                     <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
                                       {exp.company}
                                     </Typography>
-                                    <Typography variant="body2" sx={getContentStyle()}>
-                                      {exp.description}
-                                    </Typography>
+                                    <EditableSpan
+                                      content={exp.description}
+                                      onUpdate={(value) => {
+                                        const newExperiences = [...resumeData.experiences];
+                                        newExperiences[idx] = { ...exp, description: value };
+                                        updateExperiences(newExperiences);
+                                      }}
+                                      style={getContentStyle()}
+                                      allowFormatting
+                                    />
                                   </Box>
                                 ))}
                               </>
@@ -436,6 +482,16 @@ export default function Preview() {
                                     <Typography variant="subtitle2" sx={getContentStyle()}>
                                       {edu.degree} • {edu.field}
                                     </Typography>
+                                    <EditableSpan
+                                      content={edu.description || ''}
+                                      onUpdate={(value) => {
+                                        const newEducation = [...resumeData.education];
+                                        newEducation[idx] = { ...edu, description: value };
+                                        updateEducation(newEducation);
+                                      }}
+                                      style={getContentStyle()}
+                                      allowFormatting
+                                    />
                                   </Box>
                                 ))}
                               </>

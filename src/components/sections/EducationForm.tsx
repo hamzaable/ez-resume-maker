@@ -18,6 +18,7 @@ interface EducationEntry {
   field: string;
   startDate: string;
   endDate: string;
+  description?: string;
 }
 
 const emptyEducation: EducationEntry = {
@@ -26,6 +27,7 @@ const emptyEducation: EducationEntry = {
   field: '',
   startDate: '',
   endDate: '',
+  description: '',
 };
 
 export default function EducationForm() {
@@ -115,6 +117,18 @@ export default function EducationForm() {
             InputLabelProps={{
               shrink: true,
             }}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Description"
+            name="description"
+            multiline
+            rows={4}
+            value={currentEducation.description}
+            onChange={handleChange}
+            placeholder="• Describe your academic achievements&#10;• List relevant coursework&#10;• Mention honors or awards"
           />
         </Grid>
         <Grid item xs={12}>
