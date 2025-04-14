@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Paper, IconButton, Tooltip, Box } from '@mui/material';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
@@ -17,29 +17,65 @@ interface RichTextEditorProps {
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = 100 }: RichTextEditorProps) {
   const [showToolbar, setShowToolbar] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editorRef.current && !editorRef.current.contains(event.target as Node) &&
+          toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
+        setShowToolbar(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleFormat = (command: string, value?: string) => {
+    const selection = document.getSelection();
+    if (!selection?.rangeCount) return;
+
     document.execCommand(command, false, value);
+
     if (editorRef.current) {
+      // Ensure editor keeps focus
+      editorRef.current.focus();
       onChange(editorRef.current.innerHTML);
     }
   };
 
-  const handleBlur = () => {
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand('insertLineBreak', false);
     }
-    setShowToolbar(false);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
   };
 
   const handleFocus = () => {
     setShowToolbar(true);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault();
-      document.execCommand('insertLineBreak', false);
+  const handleBlur = (e: React.FocusEvent) => {
+    // Don't hide toolbar if clicking toolbar buttons
+    if (toolbarRef.current?.contains(e.relatedTarget as Node)) {
+      return;
+    }
+
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const handleMouseUp = () => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      setShowToolbar(true);
     }
   };
 
@@ -47,6 +83,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     <Box sx={{ position: 'relative' }}>
       {showToolbar && (
         <Paper
+          ref={toolbarRef}
           sx={{
             display: 'flex',
             p: 0.5,
@@ -54,27 +91,29 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
             position: 'sticky',
             top: 0,
             zIndex: 1,
-            backgroundColor: 'background.paper'
+            backgroundColor: 'background.paper',
+            gap: 0.5
           }}
         >
           <Tooltip title="Bold">
-            <IconButton size="small" onClick={() => handleFormat('bold')}>
+            <IconButton size="small" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}>
               <FormatBoldIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Italic">
-            <IconButton size="small" onClick={() => handleFormat('italic')}>
+            <IconButton size="small" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}>
               <FormatItalicIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Underline">
-            <IconButton size="small" onClick={() => handleFormat('underline')}>
+            <IconButton size="small" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}>
               <FormatUnderlinedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Link">
             <IconButton
               size="small"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 const url = prompt('Enter URL:');
                 if (url) handleFormat('createLink', url);
@@ -84,12 +123,20 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
             </IconButton>
           </Tooltip>
           <Tooltip title="Bullet List">
-            <IconButton size="small" onClick={() => handleFormat('insertUnorderedList')}>
+            <IconButton
+              size="small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleFormat('insertUnorderedList')}
+            >
               <FormatListBulletedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Numbered List">
-            <IconButton size="small" onClick={() => handleFormat('insertOrderedList')}>
+            <IconButton
+              size="small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleFormat('insertOrderedList')}
+            >
               <FormatListNumberedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -98,9 +145,11 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
       <div
         ref={editorRef}
         contentEditable
-        onBlur={handleBlur}
         onFocus={handleFocus}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onMouseUp={handleMouseUp}
+        onPaste={handlePaste}
         dangerouslySetInnerHTML={{ __html: value }}
         style={{
           minHeight,
@@ -117,6 +166,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           if (e.currentTarget.innerHTML === '<br>') {
             e.currentTarget.innerHTML = '';
           }
+          onChange(e.currentTarget.innerHTML);
         }}
       />
     </Box>
