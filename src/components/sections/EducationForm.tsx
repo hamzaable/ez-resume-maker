@@ -154,6 +154,13 @@ export default function EducationForm() {
             onChange={handleDescriptionChange}
             placeholder="• Describe your academic achievements&#10;• List relevant coursework&#10;• Mention honors or awards"
             minHeight={150}
+            contextData={{
+              degree: currentEducation.degree,
+              field: currentEducation.field,
+              school: currentEducation.school,
+              startDate: currentEducation.startDate,
+              endDate: currentEducation.endDate
+            }}
           />
         </Grid>
         <Grid item xs={12}>

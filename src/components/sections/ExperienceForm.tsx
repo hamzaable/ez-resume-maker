@@ -140,6 +140,12 @@ export default function ExperienceForm() {
             onChange={handleDescriptionChange}
             placeholder="• Use bullet points to describe your achievements&#10;• Focus on impact and quantifiable results&#10;• Use action verbs"
             minHeight={150}
+            contextData={{
+              position: currentExperience.position,
+              company: currentExperience.company,
+              startDate: currentExperience.startDate,
+              endDate: currentExperience.endDate
+            }}
           />
         </Grid>
         <Grid item xs={12}>

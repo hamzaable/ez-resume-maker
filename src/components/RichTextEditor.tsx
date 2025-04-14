@@ -1,21 +1,34 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Paper, IconButton, Tooltip, Box } from '@mui/material';
+import { Paper, IconButton, Tooltip, Box, Button, Snackbar, Alert } from '@mui/material';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import LinkIcon from '@mui/icons-material/Link';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { generateBulletPoint } from '../services/ai';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   minHeight?: number;
+  contextData?: {
+    position?: string;
+    company?: string;
+    startDate?: string;
+    endDate?: string;
+    degree?: string;
+    field?: string;
+    school?: string;
+  };
 }
 
-export default function RichTextEditor({ value, onChange, placeholder, minHeight = 100 }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, minHeight = 100, contextData }: RichTextEditorProps) {
   const [showToolbar, setShowToolbar] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const lastSelection = useRef<Range | null>(null);
@@ -105,6 +118,40 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     onChange(e.currentTarget.innerHTML);
   };
 
+  const handleGenerateBullet = async () => {
+    if (!contextData) return;
+
+    setIsGenerating(true);
+    setError(null);
+    try {
+      let prompt = '';
+
+      if (contextData.position && contextData.company) {
+        prompt = `As a ${contextData.position} at ${contextData.company}`;
+        if (contextData.startDate && contextData.endDate) {
+          prompt += ` from ${contextData.startDate} to ${contextData.endDate}`;
+        }
+      } else if (contextData.degree && contextData.field && contextData.school) {
+        prompt = `While studying ${contextData.degree} in ${contextData.field} at ${contextData.school}`;
+        if (contextData.startDate && contextData.endDate) {
+          prompt += ` from ${contextData.startDate} to ${contextData.endDate}`;
+        }
+      }
+
+      const bullet = await generateBulletPoint(prompt);
+
+      if (editorRef.current) {
+        const currentContent = editorRef.current.innerHTML;
+        editorRef.current.innerHTML = currentContent + (currentContent ? '<br>' : '') + bullet;
+        onChange(editorRef.current.innerHTML);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to generate bullet point');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <Box sx={{ position: 'relative' }}>
       {showToolbar && (
@@ -166,6 +213,19 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
               <FormatListNumberedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          {contextData && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              disabled={isGenerating}
+              onClick={handleGenerateBullet}
+              startIcon={<AutoAwesomeIcon />}
+              sx={{ ml: 'auto' }}
+            >
+              {isGenerating ? 'Generating...' : 'Generate Bullet'}
+            </Button>
+          )}
         </Paper>
       )}
       <div
@@ -190,6 +250,16 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
           lineHeight: 'inherit',
         }}
       />
+      <Snackbar
+        open={error !== null}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
