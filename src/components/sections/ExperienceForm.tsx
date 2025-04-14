@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useResume } from '../../context/ResumeContext';
+import RichTextEditor from '../RichTextEditor';
 
 interface ExperienceEntry {
   company: string;
@@ -37,6 +38,13 @@ export default function ExperienceForm() {
     setCurrentExperience(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setCurrentExperience(prev => ({
+      ...prev,
+      description: value
     }));
   };
 
@@ -106,15 +114,14 @@ export default function ExperienceForm() {
           />
         </Grid>
         <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Description"
-            name="description"
-            multiline
-            rows={4}
+          <Typography variant="subtitle2" gutterBottom sx={{ ml: 0.5, color: 'text.secondary' }}>
+            Description
+          </Typography>
+          <RichTextEditor
             value={currentExperience.description}
-            onChange={handleChange}
+            onChange={handleDescriptionChange}
             placeholder="• Use bullet points to describe your achievements&#10;• Focus on impact and quantifiable results&#10;• Use action verbs"
+            minHeight={150}
           />
         </Grid>
         <Grid item xs={12}>

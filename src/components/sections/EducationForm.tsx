@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useResume } from '../../context/ResumeContext';
+import RichTextEditor from '../RichTextEditor';
 
 interface EducationEntry {
   school: string;
@@ -52,6 +53,13 @@ export default function EducationForm() {
   const handleDelete = (index: number) => {
     const newEducation = resumeData.education.filter((_, i) => i !== index);
     updateEducation(newEducation);
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setCurrentEducation(prev => ({
+      ...prev,
+      description: value
+    }));
   };
 
   return (
@@ -120,15 +128,14 @@ export default function EducationForm() {
           />
         </Grid>
         <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Description"
-            name="description"
-            multiline
-            rows={4}
-            value={currentEducation.description}
-            onChange={handleChange}
+          <Typography variant="subtitle2" gutterBottom sx={{ ml: 0.5, color: 'text.secondary' }}>
+            Description
+          </Typography>
+          <RichTextEditor
+            value={currentEducation.description || ''}
+            onChange={handleDescriptionChange}
             placeholder="• Describe your academic achievements&#10;• List relevant coursework&#10;• Mention honors or awards"
+            minHeight={150}
           />
         </Grid>
         <Grid item xs={12}>
