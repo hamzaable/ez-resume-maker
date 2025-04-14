@@ -181,6 +181,7 @@ export default function Preview() {
     } = useResume();
     const { documentStyle } = resumeData;
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(true);
 
     const [sections, setSections] = useState<Section[]>([
         { id: 'summary', title: 'SUMMARY', content: null },
@@ -368,7 +369,7 @@ export default function Preview() {
                 </Toolbar>
             </AppBar>
             <Box sx={{ flexGrow: 1, display: 'flex' }}>
-                <Box sx={{ width: 280, flexShrink: 0 }}>
+                <Box sx={{ width: isSettingsOpen ? 280 : 0, flexShrink: 0, transition: 'width 0.3s ease' }}>
                     <DocumentControls
                         font={documentStyle.font}
                         fontSize={documentStyle.fontSize}
@@ -380,13 +381,11 @@ export default function Preview() {
                         onLineSpacingChange={(lineSpacing) => updateDocumentStyle({ lineSpacing })}
                         onMarginsChange={(margins) => updateDocumentStyle({ margins })}
                         onPageSizeChange={(pageSize) => updateDocumentStyle({ pageSize })}
+                        isOpen={isSettingsOpen}
+                        onToggle={() => setIsSettingsOpen(!isSettingsOpen)}
                     />
                 </Box>
                 <Box sx={{ flexGrow: 1 }}>
-
-
-
-
                     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
                         <Paper
                             id="resume-preview"
