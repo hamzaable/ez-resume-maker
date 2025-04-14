@@ -10,6 +10,8 @@ import {
     Paper,
     IconButton,
     Tooltip,
+    FormControlLabel,
+    Switch,
 } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -20,11 +22,16 @@ interface DocumentControlsProps {
     lineSpacing: number;
     margins: number;
     pageSize: string;
+    showPageNumbers: boolean;
+    showNameOnPage2: boolean;
+    hasMultiplePages: boolean;
     onFontChange: (font: string) => void;
     onFontSizeChange: (size: number) => void;
     onLineSpacingChange: (spacing: number) => void;
     onMarginsChange: (margins: number) => void;
     onPageSizeChange: (size: string) => void;
+    onShowPageNumbersChange: (show: boolean) => void;
+    onShowNameOnPage2Change: (show: boolean) => void;
     isOpen: boolean;
     onToggle: () => void;
 }
@@ -51,11 +58,16 @@ export default function DocumentControls({
     lineSpacing,
     margins,
     pageSize,
+    showPageNumbers,
+    showNameOnPage2,
+    hasMultiplePages,
     onFontChange,
     onFontSizeChange,
     onLineSpacingChange,
     onMarginsChange,
     onPageSizeChange,
+    onShowPageNumbersChange,
+    onShowNameOnPage2Change,
     isOpen,
     onToggle,
 }: DocumentControlsProps) {
@@ -155,6 +167,30 @@ export default function DocumentControls({
                             size="small"
                             fullWidth
                         />
+
+                        {hasMultiplePages && (
+                            <>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={showPageNumbers}
+                                            onChange={(e) => onShowPageNumbersChange(e.target.checked)}
+                                        />
+                                    }
+                                    label="Show Page Numbers"
+                                />
+
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={showNameOnPage2}
+                                            onChange={(e) => onShowNameOnPage2Change(e.target.checked)}
+                                        />
+                                    }
+                                    label="Show Name on Page 2"
+                                />
+                            </>
+                        )}
                     </>
                 )}
             </Paper>

@@ -23,7 +23,7 @@ import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
 import { ResumeData } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
-import { KeyboardEvent, useRef, useState } from 'react';
+import { KeyboardEvent, useRef, useState, useEffect } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -184,6 +184,12 @@ export default function Preview() {
     const { documentStyle } = resumeData;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+    const [showPageNumbers, setShowPageNumbers] = useState(false);
+    const [showNameOnPage2, setShowNameOnPage2] = useState(false);
+    const [contentHeight, setContentHeight] = useState(0);
+    const [needsSecondPage, setNeedsSecondPage] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [splitIndex, setSplitIndex] = useState<number | null>(null);
 
     const [sections, setSections] = useState<Section[]>([
         { id: 'summary', title: 'SUMMARY', content: null },
@@ -216,8 +222,9 @@ export default function Preview() {
     };
 
     const handleDownloadPDF = () => {
-        const element = document.getElementById('resume-preview');
-        if (!element) return;
+        const page1 = document.getElementById('resume-preview-page1');
+        const page2 = document.getElementById('resume-preview-page2');
+        if (!page1) return;
 
         const pageSize = pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4;
         const opt = {
@@ -236,7 +243,18 @@ export default function Preview() {
             },
         };
 
-        html2pdf().set(opt).from(element).save();
+        if (page2) {
+            // Create a container for both pages
+            const container = document.createElement('div');
+            container.appendChild(page1.cloneNode(true));
+            container.appendChild(page2.cloneNode(true));
+
+            // Generate PDF from both pages
+            html2pdf().set(opt).from(container).save();
+        } else {
+            // Generate PDF from single page
+            html2pdf().set(opt).from(page1).save();
+        }
     };
 
     const handleExportJSON = () => {
@@ -317,6 +335,184 @@ export default function Preview() {
         setResumeData((prev: ResumeData) => ({ ...prev, cvName: newName }));
     };
 
+    useEffect(() => {
+        if (contentRef.current) {
+            const height = contentRef.current.scrollHeight;
+            setContentHeight(height);
+            const pageHeight = (pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height * 3.78; // Convert mm to px
+            const availableHeight = pageHeight - (documentStyle.margins * 2 * 3.78); // Account for margins
+
+            if (height > availableHeight) {
+                // Find the section that would fit best on the first page
+                const sections = contentRef.current.querySelectorAll('.resume-section');
+                let currentHeight = 0;
+                let splitAt = 0;
+
+                // Add some padding to ensure no overflow
+                const safeHeight = availableHeight * 0.9; // Use 90% of available height to be safe
+
+                for (let i = 0; i < sections.length; i++) {
+                    const section = sections[i] as HTMLElement;
+                    const sectionHeight = section.offsetHeight;
+
+                    // Check if adding this section would exceed the safe height
+                    if (currentHeight + sectionHeight > safeHeight) {
+                        // If this is the first section, we have to split it
+                        if (i === 0) {
+                            splitAt = 0;
+                        } else {
+                            // Otherwise, split at the previous section
+                            splitAt = i - 1;
+                        }
+                        break;
+                    }
+
+                    currentHeight += sectionHeight;
+
+                    // If we've gone through all sections and they fit, no split needed
+                    if (i === sections.length - 1) {
+                        splitAt = sections.length;
+                    }
+                }
+
+                setSplitIndex(splitAt);
+                setNeedsSecondPage(true);
+            } else {
+                setSplitIndex(null);
+                setNeedsSecondPage(false);
+            }
+        }
+    }, [documentStyle.pageSize, documentStyle.margins, resumeData]);
+
+    const renderSection = (section: Section, isFirstPage: boolean = true) => {
+        const shouldRender = isFirstPage ?
+            sections.indexOf(section) <= (splitIndex || sections.length) :
+            sections.indexOf(section) > (splitIndex || -1);
+
+        if (!shouldRender) return null;
+
+        return (
+            <SortableSection key={section.id} id={section.id}>
+                <Box sx={{ mb: 3 }} className="resume-section">
+                    {section.id === 'summary' && resumeData.summary && (
+                        <>
+                            {renderSectionTitle(section.title)}
+                            <EditableSpan
+                                content={resumeData.summary}
+                                onUpdate={updateSummary}
+                                style={getContentStyle()}
+                                allowFormatting
+                            />
+                        </>
+                    )}
+
+                    {section.id === 'experience' && resumeData.experiences.length > 0 && (
+                        <>
+                            {renderSectionTitle(section.title)}
+                            {resumeData.experiences.map((exp, idx) => (
+                                <Box key={idx} sx={{ mb: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                            {exp.position}
+                                        </Typography>
+                                        <Typography variant="body2" sx={getContentStyle()}>
+                                            {exp.startDate} - {exp.endDate}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
+                                        {exp.company}
+                                    </Typography>
+                                    <EditableSpan
+                                        content={exp.description}
+                                        onUpdate={(value) => {
+                                            const newExperiences = [...resumeData.experiences];
+                                            newExperiences[idx] = { ...exp, description: value };
+                                            updateExperiences(newExperiences);
+                                        }}
+                                        style={getContentStyle()}
+                                        allowFormatting
+                                    />
+                                </Box>
+                            ))}
+                        </>
+                    )}
+
+                    {section.id === 'education' && resumeData.education.length > 0 && (
+                        <>
+                            {renderSectionTitle(section.title)}
+                            {resumeData.education.map((edu, idx) => (
+                                <Box key={idx} sx={{ mb: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                            {edu.school}
+                                        </Typography>
+                                        <Typography variant="body2" sx={getContentStyle()}>
+                                            {edu.startDate} - {edu.endDate}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="subtitle2" sx={getContentStyle()}>
+                                        {edu.degree} • {edu.field}
+                                    </Typography>
+                                    <EditableSpan
+                                        content={edu.description || ''}
+                                        onUpdate={(value) => {
+                                            const newEducation = [...resumeData.education];
+                                            newEducation[idx] = { ...edu, description: value };
+                                            updateEducation(newEducation);
+                                        }}
+                                        style={getContentStyle()}
+                                        allowFormatting
+                                    />
+                                </Box>
+                            ))}
+                        </>
+                    )}
+
+                    {section.id === 'skills' && resumeData.skills.length > 0 && (
+                        <>
+                            {renderSectionTitle(section.title)}
+                            <Typography variant="body1" sx={getContentStyle()}>
+                                {resumeData.skills.join(' • ')}
+                            </Typography>
+                        </>
+                    )}
+
+                    {section.id === 'courses' && (
+                        <>
+                            {renderSectionTitle(section.title)}
+                            <Typography variant="body1" sx={getContentStyle()}>
+                                JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
+                            </Typography>
+                        </>
+                    )}
+                </Box>
+            </SortableSection>
+        );
+    };
+
+    const renderPageHeader = (pageNumber: number) => (
+        <Box sx={{ textAlign: 'center', mb: 2 }}>
+            {(pageNumber === 1 || showNameOnPage2) && (
+                <Typography variant="h4" component="div" sx={{ mb: 2 }}>
+                    <EditableSpan
+                        content={resumeData.contact.fullName}
+                        onUpdate={(value) => updateContact({ ...resumeData.contact, fullName: value })}
+                        style={{
+                            ...getContentStyle(),
+                            fontSize: `${documentStyle.fontSize * 1.5}pt`,
+                            fontWeight: 'bold',
+                        }}
+                    />
+                </Typography>
+            )}
+            {showPageNumbers && pageNumber > 1 && (
+                <Typography variant="h6" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                    Page {pageNumber}
+                </Typography>
+            )}
+        </Box>
+    );
+
     return (
         <Box>
             <AppBar position="static" color="transparent">
@@ -390,53 +586,48 @@ export default function Preview() {
                         lineSpacing={documentStyle.lineSpacing}
                         margins={documentStyle.margins}
                         pageSize={documentStyle.pageSize}
+                        showPageNumbers={showPageNumbers}
+                        showNameOnPage2={showNameOnPage2}
+                        hasMultiplePages={needsSecondPage}
                         onFontChange={(font) => updateDocumentStyle({ font })}
                         onFontSizeChange={(fontSize) => updateDocumentStyle({ fontSize })}
                         onLineSpacingChange={(lineSpacing) => updateDocumentStyle({ lineSpacing })}
                         onMarginsChange={(margins) => updateDocumentStyle({ margins })}
                         onPageSizeChange={(pageSize) => updateDocumentStyle({ pageSize })}
+                        onShowPageNumbersChange={setShowPageNumbers}
+                        onShowNameOnPage2Change={setShowNameOnPage2}
                         isOpen={isSettingsOpen}
                         onToggle={() => setIsSettingsOpen(!isSettingsOpen)}
                     />
                 </Box>
                 <Box sx={{ flexGrow: 1 }}>
                     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-                        <Paper
-                            id="resume-preview"
-                            sx={{
-                                width: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).width}mm`,
-                                height: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height}mm`,
-                                margin: '0 auto',
-                                backgroundColor: 'white',
-                                color: 'black',
-                                position: 'relative',
-                                ...getContentStyle(),
-                            }}
-                        >
-                            <Box
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <Paper
+                                id="resume-preview-page1"
                                 sx={{
-                                    position: 'absolute',
-                                    top: `${documentStyle.margins}mm`,
-                                    left: `${documentStyle.margins}mm`,
-                                    right: `${documentStyle.margins}mm`,
-                                    bottom: `${documentStyle.margins}mm`,
-                                    overflow: 'auto',
+                                    width: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).width}mm`,
+                                    height: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height}mm`,
+                                    margin: '0 auto',
+                                    backgroundColor: 'white',
+                                    color: 'black',
+                                    position: 'relative',
+                                    ...getContentStyle(),
                                 }}
                             >
-                                <Box sx={{ textAlign: 'center', mb: 3 }}>
-                                    <Typography variant="h4" component="div" sx={{ mb: 2 }}>
-                                        <EditableSpan
-                                            content={resumeData.contact.fullName}
-                                            onUpdate={(value) => updateContact({ ...resumeData.contact, fullName: value })}
-                                            style={{
-                                                ...getContentStyle(),
-                                                fontSize: `${documentStyle.fontSize * 1.5}pt`,
-                                                fontWeight: 'bold',
-                                            }}
-                                        />
-                                    </Typography>
-
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
+                                <Box
+                                    ref={contentRef}
+                                    sx={{
+                                        position: 'absolute',
+                                        top: `${documentStyle.margins}mm`,
+                                        left: `${documentStyle.margins}mm`,
+                                        right: `${documentStyle.margins}mm`,
+                                        bottom: `${documentStyle.margins}mm`,
+                                        overflow: 'auto',
+                                    }}
+                                >
+                                    {renderPageHeader(1)}
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap', marginBottom: '24px' }}>
                                         {renderContactIcon(
                                             <EmailIcon fontSize="small" />,
                                             resumeData.contact.email,
@@ -472,121 +663,64 @@ export default function Preview() {
                                             />
                                         </Box>
                                     )}
-                                </Box>
 
-                                <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <SortableContext
-                                        items={sections.map(section => section.id)}
-                                        strategy={verticalListSortingStrategy}
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
                                     >
-                                        {sections.map((section) => (
-                                            <SortableSection key={section.id} id={section.id}>
-                                                <Box sx={{ mb: 3 }}>
-                                                    {section.id === 'summary' && resumeData.summary && (
-                                                        <>
-                                                            {renderSectionTitle(section.title)}
-                                                            <EditableSpan
-                                                                content={resumeData.summary}
-                                                                onUpdate={updateSummary}
-                                                                style={getContentStyle()}
-                                                                allowFormatting
-                                                            />
-                                                        </>
-                                                    )}
-
-                                                    {section.id === 'experience' && resumeData.experiences.length > 0 && (
-                                                        <>
-                                                            {renderSectionTitle(section.title)}
-                                                            {resumeData.experiences.map((exp, idx) => (
-                                                                <Box key={idx} sx={{ mb: 2 }}>
-                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                                                            {exp.position}
-                                                                        </Typography>
-                                                                        <Typography variant="body2" sx={getContentStyle()}>
-                                                                            {exp.startDate} - {exp.endDate}
-                                                                        </Typography>
-                                                                    </Box>
-                                                                    <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
-                                                                        {exp.company}
-                                                                    </Typography>
-                                                                    <EditableSpan
-                                                                        content={exp.description}
-                                                                        onUpdate={(value) => {
-                                                                            const newExperiences = [...resumeData.experiences];
-                                                                            newExperiences[idx] = { ...exp, description: value };
-                                                                            updateExperiences(newExperiences);
-                                                                        }}
-                                                                        style={getContentStyle()}
-                                                                        allowFormatting
-                                                                    />
-                                                                </Box>
-                                                            ))}
-                                                        </>
-                                                    )}
-
-                                                    {section.id === 'education' && resumeData.education.length > 0 && (
-                                                        <>
-                                                            {renderSectionTitle(section.title)}
-                                                            {resumeData.education.map((edu, idx) => (
-                                                                <Box key={idx} sx={{ mb: 2 }}>
-                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                                                        <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                                                            {edu.school}
-                                                                        </Typography>
-                                                                        <Typography variant="body2" sx={getContentStyle()}>
-                                                                            {edu.startDate} - {edu.endDate}
-                                                                        </Typography>
-                                                                    </Box>
-                                                                    <Typography variant="subtitle2" sx={getContentStyle()}>
-                                                                        {edu.degree} • {edu.field}
-                                                                    </Typography>
-                                                                    <EditableSpan
-                                                                        content={edu.description || ''}
-                                                                        onUpdate={(value) => {
-                                                                            const newEducation = [...resumeData.education];
-                                                                            newEducation[idx] = { ...edu, description: value };
-                                                                            updateEducation(newEducation);
-                                                                        }}
-                                                                        style={getContentStyle()}
-                                                                        allowFormatting
-                                                                    />
-                                                                </Box>
-                                                            ))}
-                                                        </>
-                                                    )}
-
-                                                    {section.id === 'skills' && resumeData.skills.length > 0 && (
-                                                        <>
-                                                            {renderSectionTitle(section.title)}
-                                                            <Typography variant="body1" sx={getContentStyle()}>
-                                                                {resumeData.skills.join(' • ')}
-                                                            </Typography>
-                                                        </>
-                                                    )}
-
-                                                    {section.id === 'courses' && (
-                                                        <>
-                                                            {renderSectionTitle(section.title)}
-                                                            <Typography variant="body1" sx={getContentStyle()}>
-                                                                JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
-                                                            </Typography>
-                                                        </>
-                                                    )}
-                                                </Box>
-                                            </SortableSection>
-                                        ))}
-                                    </SortableContext>
-                                </DndContext>
-                            </Box>
-                        </Paper>
+                                        <SortableContext
+                                            items={sections.map(section => section.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {sections.map(section => renderSection(section, true))}
+                                        </SortableContext>
+                                    </DndContext>
+                                </Box>
+                            </Paper>
+                            {needsSecondPage && (
+                                <Paper
+                                    id="resume-preview-page2"
+                                    sx={{
+                                        width: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).width}mm`,
+                                        height: `${(pageSizes[documentStyle.pageSize as keyof typeof pageSizes] || pageSizes.A4).height}mm`,
+                                        margin: '0 auto',
+                                        backgroundColor: 'white',
+                                        color: 'black',
+                                        position: 'relative',
+                                        ...getContentStyle(),
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            top: `${documentStyle.margins}mm`,
+                                            left: `${documentStyle.margins}mm`,
+                                            right: `${documentStyle.margins}mm`,
+                                            bottom: `${documentStyle.margins}mm`,
+                                            overflow: 'auto',
+                                        }}
+                                    >
+                                        {renderPageHeader(2)}
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                        >
+                                            <SortableContext
+                                                items={sections.map(section => section.id)}
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                {sections.map(section => renderSection(section, false))}
+                                            </SortableContext>
+                                        </DndContext>
+                                    </Box>
+                                </Paper>
+                            )}
+                        </Box>
                     </Container>
                 </Box>
             </Box>
-        </Box >
+        </Box>
     );
 }
