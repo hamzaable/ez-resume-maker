@@ -118,6 +118,25 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
     onChange(e.currentTarget.innerHTML);
   };
 
+  const getExistingBullets = (): string[] => {
+    if (!editorRef.current) return [];
+
+    // Get the HTML content
+    const content = editorRef.current.innerHTML;
+
+    // Create a temporary div to parse the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = content;
+
+    // Get all text content split by line breaks
+    const lines = temp.innerText.split('\n');
+
+    // Filter for bullet points and clean them up
+    return lines
+      .map(line => line.trim())
+      .filter(line => line.startsWith('•'));
+  };
+
   const handleGenerateBullet = async () => {
     if (!contextData) return;
 
@@ -138,7 +157,8 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         }
       }
 
-      const bullet = await generateBulletPoint(prompt);
+      const existingBullets = getExistingBullets();
+      const bullet = await generateBulletPoint(prompt, existingBullets);
 
       if (editorRef.current) {
         const currentContent = editorRef.current.innerHTML;
