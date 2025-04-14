@@ -186,7 +186,7 @@ export default function ExperienceForm() {
                   </Typography>
                   <div dangerouslySetInnerHTML={{ __html: experience.description }} />
                 </Box>
-                <Box>
+                <Box style={{minWidth: '80px'}}>
                   <IconButton onClick={() => handleEdit(index)} color="primary">
                     <EditIcon />
                   </IconButton>
