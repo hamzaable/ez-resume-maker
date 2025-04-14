@@ -95,4 +95,13 @@ button:focus-visible {
     padding: 20mm !important;
     box-shadow: none !important;
   }
+
+  .printing [role="button"] {
+    display: none !important;
+  }
+
+  /* Hide drag handles when printing */
+  [data-rbd-drag-handle-draggable-id] {
+    display: none !important;
+  }
 }

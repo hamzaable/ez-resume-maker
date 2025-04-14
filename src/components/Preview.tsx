@@ -23,7 +23,7 @@ import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
 import { KeyboardEvent, useRef, useState } from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 interface EditableSpanProps {
   content: string;
@@ -78,27 +78,59 @@ export default function Preview() {
     { id: 'courses', title: 'COURSES', content: null },
   ]);
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
-    const items = Array.from(sections);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    const { source, destination } = result;
 
-    setSections(items);
+    // Don't do anything if dropped in the same place
+    if (source.index === destination.index) return;
+
+    const newSections = Array.from(sections);
+    const [removed] = newSections.splice(source.index, 1);
+    newSections.splice(destination.index, 0, removed);
+
+    setSections(newSections);
   };
 
   const handleDownloadPDF = () => {
     const element = document.getElementById('resume-preview');
     const opt = {
-      margin: [documentStyle.margins, documentStyle.margins],
+      margin: [10, 10, 10, 10],
       filename: 'resume.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: {
+        scale: 4,
+        useCORS: true,
+        logging: false,
+        removeContainer: true,
+        scrollY: -window.scrollY
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+        compress: true,
+        precision: 16
+      }
     };
 
-    html2pdf().set(opt).from(element).save();
+    // Add a class to hide drag handles during PDF generation
+    element?.classList.add('printing');
+
+    // Temporarily adjust the element's style for PDF generation
+    if (element) {
+      const originalStyle = element.style.cssText;
+      element.style.padding = '20mm';
+      element.style.margin = '0';
+      element.style.boxShadow = 'none';
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        // Restore original styles and remove printing class
+        element.style.cssText = originalStyle;
+        element.classList.remove('printing');
+      });
+    }
   };
 
   const handleExportJSON = () => {
@@ -309,17 +341,30 @@ export default function Preview() {
           </Box>
 
           <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="sections">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef}>
+            <Droppable droppableId="sections" type="section">
+              {(provided, snapshot) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  style={{
+                    minHeight: snapshot.isDraggingOver ? '100px' : 'auto',
+                    transition: 'background-color 0.2s ease',
+                    backgroundColor: snapshot.isDraggingOver ? 'rgba(0, 0, 0, 0.02)' : 'transparent'
+                  }}
+                >
                   {sections.map((section, index) => (
                     <Draggable key={section.id} draggableId={section.id} index={index}>
-                      {(provided) => (
+                      {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            opacity: snapshot.isDragging ? 0.8 : 1,
+                            position: 'relative'
+                          }}
                         >
-                          <Box sx={{ mb: 3, position: 'relative' }}>
+                          <Box sx={{ mb: 3 }}>
                             <Box
                               {...provided.dragHandleProps}
                               sx={{
@@ -329,6 +374,12 @@ export default function Preview() {
                                 cursor: 'move',
                                 opacity: 0.3,
                                 '&:hover': { opacity: 1 },
+                                '@media print': {
+                                  display: 'none'
+                                },
+                                display: 'flex',
+                                alignItems: 'center',
+                                height: '100%'
                               }}
                             >
                               <DragIndicatorIcon />
