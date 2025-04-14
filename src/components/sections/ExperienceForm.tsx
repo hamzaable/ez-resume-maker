@@ -10,6 +10,7 @@ import {
   IconButton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useResume } from '../../context/ResumeContext';
 import RichTextEditor from '../RichTextEditor';
 
@@ -32,6 +33,7 @@ const emptyExperience: ExperienceEntry = {
 export default function ExperienceForm() {
   const { resumeData, updateExperiences } = useResume();
   const [currentExperience, setCurrentExperience] = useState<ExperienceEntry>(emptyExperience);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -50,9 +52,25 @@ export default function ExperienceForm() {
 
   const handleAdd = () => {
     if (currentExperience.company && currentExperience.position) {
-      updateExperiences([...resumeData.experiences, currentExperience]);
+      const newExperiences = [...resumeData.experiences];
+      if (editingIndex !== null) {
+        // Update existing experience
+        newExperiences[editingIndex] = currentExperience;
+      } else {
+        // Add new experience
+        newExperiences.push(currentExperience);
+      }
+      updateExperiences(newExperiences);
       setCurrentExperience(emptyExperience);
+      setEditingIndex(null);
     }
+  };
+
+  const handleEdit = (index: number) => {
+    setCurrentExperience(resumeData.experiences[index]);
+    setEditingIndex(index);
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = (index: number) => {
@@ -63,7 +81,7 @@ export default function ExperienceForm() {
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Add Experience
+        {editingIndex !== null ? 'Edit Experience' : 'Add Experience'}
       </Typography>
 
       <Grid container spacing={3}>
@@ -132,8 +150,22 @@ export default function ExperienceForm() {
             onClick={handleAdd}
             disabled={!currentExperience.company || !currentExperience.position}
           >
-            Add Experience
+            {editingIndex !== null ? 'Update Experience' : 'Add Experience'}
           </Button>
+          {editingIndex !== null && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              onClick={() => {
+                setCurrentExperience(emptyExperience);
+                setEditingIndex(null);
+              }}
+              sx={{ mt: 1 }}
+            >
+              Cancel Edit
+            </Button>
+          )}
         </Grid>
       </Grid>
 
@@ -152,13 +184,16 @@ export default function ExperienceForm() {
                   <Typography color="textSecondary">
                     {experience.startDate} - {experience.endDate}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {experience.description}
-                  </Typography>
+                  <div dangerouslySetInnerHTML={{ __html: experience.description }} />
                 </Box>
-                <IconButton onClick={() => handleDelete(index)} color="error">
-                  <DeleteIcon />
-                </IconButton>
+                <Box>
+                  <IconButton onClick={() => handleEdit(index)} color="primary">
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(index)} color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
               </Box>
             </CardContent>
           </Card>

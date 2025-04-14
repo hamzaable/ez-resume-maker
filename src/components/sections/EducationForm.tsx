@@ -10,6 +10,7 @@ import {
   IconButton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useResume } from '../../context/ResumeContext';
 import RichTextEditor from '../RichTextEditor';
 
@@ -34,6 +35,7 @@ const emptyEducation: EducationEntry = {
 export default function EducationForm() {
   const { resumeData, updateEducation } = useResume();
   const [currentEducation, setCurrentEducation] = useState<EducationEntry>(emptyEducation);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,8 +47,17 @@ export default function EducationForm() {
 
   const handleAdd = () => {
     if (currentEducation.school && currentEducation.degree) {
-      updateEducation([...resumeData.education, currentEducation]);
+      const newEducation = [...resumeData.education];
+      if (editingIndex !== null) {
+        // Update existing education
+        newEducation[editingIndex] = currentEducation;
+      } else {
+        // Add new education
+        newEducation.push(currentEducation);
+      }
+      updateEducation(newEducation);
       setCurrentEducation(emptyEducation);
+      setEditingIndex(null);
     }
   };
 
@@ -62,10 +73,17 @@ export default function EducationForm() {
     }));
   };
 
+  const handleEdit = (index: number) => {
+    setCurrentEducation(resumeData.education[index]);
+    setEditingIndex(index);
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Add Education
+        {editingIndex !== null ? 'Edit Education' : 'Add Education'}
       </Typography>
 
       <Grid container spacing={3}>
@@ -146,8 +164,22 @@ export default function EducationForm() {
             onClick={handleAdd}
             disabled={!currentEducation.school || !currentEducation.degree}
           >
-            Add Education
+            {editingIndex !== null ? 'Update Education' : 'Add Education'}
           </Button>
+          {editingIndex !== null && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              onClick={() => {
+                setCurrentEducation(emptyEducation);
+                setEditingIndex(null);
+              }}
+              sx={{ mt: 1 }}
+            >
+              Cancel Edit
+            </Button>
+          )}
         </Grid>
       </Grid>
 
@@ -169,10 +201,18 @@ export default function EducationForm() {
                   <Typography color="textSecondary">
                     {education.startDate} - {education.endDate}
                   </Typography>
+                  {education.description && (
+                    <div dangerouslySetInnerHTML={{ __html: education.description }} />
+                  )}
                 </Box>
-                <IconButton onClick={() => handleDelete(index)} color="error">
-                  <DeleteIcon />
-                </IconButton>
+                <Box>
+                  <IconButton onClick={() => handleEdit(index)} color="primary">
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(index)} color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
               </Box>
             </CardContent>
           </Card>
