@@ -23,7 +23,23 @@ import html2pdf from 'html2pdf.js';
 import { useResume } from '../context/ResumeContext';
 import DocumentControls from './DocumentControls';
 import { KeyboardEvent, useRef, useState } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import FormatToolbar from './FormatToolbar';
 
 interface EditableSpanProps {
@@ -92,6 +108,56 @@ interface Section {
   content: React.ReactNode;
 }
 
+interface SortableSectionProps {
+  id: string;
+  children: React.ReactNode;
+}
+
+function SortableSection({ id, children }: SortableSectionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <Box ref={setNodeRef} style={style}>
+      <Box sx={{ mb: 3, position: 'relative' }}>
+        <Box
+          {...attributes}
+          {...listeners}
+          sx={{
+            position: 'absolute',
+            left: -30,
+            top: 0,
+            cursor: 'grab',
+            opacity: 0.3,
+            '&:hover': { opacity: 1 },
+            '@media print': {
+              display: 'none'
+            },
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%'
+          }}
+        >
+          <DragIndicatorIcon />
+        </Box>
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
 export default function Preview() {
   const navigate = useNavigate();
   const {
@@ -116,19 +182,26 @@ export default function Preview() {
     { id: 'courses', title: 'COURSES', content: null },
   ]);
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    const { source, destination } = result;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    // Don't do anything if dropped in the same place
-    if (source.index === destination.index) return;
+    if (over && active.id !== over.id) {
+      const oldIndex = sections.findIndex(
+        (section) => section.id === active.id
+      );
+      const newIndex = sections.findIndex(
+        (section) => section.id === over.id
+      );
 
-    const newSections = Array.from(sections);
-    const [removed] = newSections.splice(source.index, 1);
-    newSections.splice(destination.index, 0, removed);
-
-    setSections(newSections);
+      setSections(arrayMove(sections, oldIndex, newIndex));
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -378,152 +451,114 @@ export default function Preview() {
             )}
           </Box>
 
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="sections" type="section">
-              {(provided, snapshot) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  style={{
-                    minHeight: snapshot.isDraggingOver ? '100px' : 'auto',
-                    transition: 'background-color 0.2s ease',
-                    backgroundColor: snapshot.isDraggingOver ? 'rgba(0, 0, 0, 0.02)' : 'transparent'
-                  }}
-                >
-                  {sections.map((section, index) => (
-                    <Draggable key={section.id} draggableId={section.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          style={{
-                            ...provided.draggableProps.style,
-                            opacity: snapshot.isDragging ? 0.8 : 1,
-                            position: 'relative'
-                          }}
-                        >
-                          <Box sx={{ mb: 3 }}>
-                            <Box
-                              {...provided.dragHandleProps}
-                              sx={{
-                                position: 'absolute',
-                                left: -30,
-                                top: 0,
-                                cursor: 'move',
-                                opacity: 0.3,
-                                '&:hover': { opacity: 1 },
-                                '@media print': {
-                                  display: 'none'
-                                },
-                                display: 'flex',
-                                alignItems: 'center',
-                                height: '100%'
-                              }}
-                            >
-                              <DragIndicatorIcon />
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sections.map(section => section.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {sections.map((section) => (
+                <SortableSection key={section.id} id={section.id}>
+                  <Box sx={{ mb: 3 }}>
+                    {section.id === 'summary' && resumeData.summary && (
+                      <>
+                        {renderSectionTitle(section.title)}
+                        <EditableSpan
+                          content={resumeData.summary}
+                          onUpdate={updateSummary}
+                          style={getContentStyle()}
+                          allowFormatting
+                        />
+                      </>
+                    )}
+
+                    {section.id === 'experience' && resumeData.experiences.length > 0 && (
+                      <>
+                        {renderSectionTitle(section.title)}
+                        {resumeData.experiences.map((exp, idx) => (
+                          <Box key={idx} sx={{ mb: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                              <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                {exp.position}
+                              </Typography>
+                              <Typography variant="body2" sx={getContentStyle()}>
+                                {exp.startDate} - {exp.endDate}
+                              </Typography>
                             </Box>
-
-                            {section.id === 'summary' && resumeData.summary && (
-                              <>
-                                {renderSectionTitle(section.title)}
-                                <EditableSpan
-                                  content={resumeData.summary}
-                                  onUpdate={updateSummary}
-                                  style={getContentStyle()}
-                                  allowFormatting
-                                />
-                              </>
-                            )}
-
-                            {section.id === 'experience' && resumeData.experiences.length > 0 && (
-                              <>
-                                {renderSectionTitle(section.title)}
-                                {resumeData.experiences.map((exp, idx) => (
-                                  <Box key={idx} sx={{ mb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                      <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                        {exp.position}
-                                      </Typography>
-                                      <Typography variant="body2" sx={getContentStyle()}>
-                                        {exp.startDate} - {exp.endDate}
-                                      </Typography>
-                                    </Box>
-                                    <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
-                                      {exp.company}
-                                    </Typography>
-                                    <EditableSpan
-                                      content={exp.description}
-                                      onUpdate={(value) => {
-                                        const newExperiences = [...resumeData.experiences];
-                                        newExperiences[idx] = { ...exp, description: value };
-                                        updateExperiences(newExperiences);
-                                      }}
-                                      style={getContentStyle()}
-                                      allowFormatting
-                                    />
-                                  </Box>
-                                ))}
-                              </>
-                            )}
-
-                            {section.id === 'education' && resumeData.education.length > 0 && (
-                              <>
-                                {renderSectionTitle(section.title)}
-                                {resumeData.education.map((edu, idx) => (
-                                  <Box key={idx} sx={{ mb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                      <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
-                                        {edu.school}
-                                      </Typography>
-                                      <Typography variant="body2" sx={getContentStyle()}>
-                                        {edu.startDate} - {edu.endDate}
-                                      </Typography>
-                                    </Box>
-                                    <Typography variant="subtitle2" sx={getContentStyle()}>
-                                      {edu.degree} • {edu.field}
-                                    </Typography>
-                                    <EditableSpan
-                                      content={edu.description || ''}
-                                      onUpdate={(value) => {
-                                        const newEducation = [...resumeData.education];
-                                        newEducation[idx] = { ...edu, description: value };
-                                        updateEducation(newEducation);
-                                      }}
-                                      style={getContentStyle()}
-                                      allowFormatting
-                                    />
-                                  </Box>
-                                ))}
-                              </>
-                            )}
-
-                            {section.id === 'skills' && resumeData.skills.length > 0 && (
-                              <>
-                                {renderSectionTitle(section.title)}
-                                <Typography variant="body1" sx={getContentStyle()}>
-                                  {resumeData.skills.join(' • ')}
-                                </Typography>
-                              </>
-                            )}
-
-                            {section.id === 'courses' && (
-                              <>
-                                {renderSectionTitle(section.title)}
-                                <Typography variant="body1" sx={getContentStyle()}>
-                                  JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
-                                </Typography>
-                              </>
-                            )}
+                            <Typography variant="subtitle2" sx={{ ...getContentStyle(), mb: 1 }}>
+                              {exp.company}
+                            </Typography>
+                            <EditableSpan
+                              content={exp.description}
+                              onUpdate={(value) => {
+                                const newExperiences = [...resumeData.experiences];
+                                newExperiences[idx] = { ...exp, description: value };
+                                updateExperiences(newExperiences);
+                              }}
+                              style={getContentStyle()}
+                              allowFormatting
+                            />
                           </Box>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+                        ))}
+                      </>
+                    )}
+
+                    {section.id === 'education' && resumeData.education.length > 0 && (
+                      <>
+                        {renderSectionTitle(section.title)}
+                        {resumeData.education.map((edu, idx) => (
+                          <Box key={idx} sx={{ mb: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                              <Typography variant="subtitle1" sx={{ ...getContentStyle(), fontWeight: 'bold' }}>
+                                {edu.school}
+                              </Typography>
+                              <Typography variant="body2" sx={getContentStyle()}>
+                                {edu.startDate} - {edu.endDate}
+                              </Typography>
+                            </Box>
+                            <Typography variant="subtitle2" sx={getContentStyle()}>
+                              {edu.degree} • {edu.field}
+                            </Typography>
+                            <EditableSpan
+                              content={edu.description || ''}
+                              onUpdate={(value) => {
+                                const newEducation = [...resumeData.education];
+                                newEducation[idx] = { ...edu, description: value };
+                                updateEducation(newEducation);
+                              }}
+                              style={getContentStyle()}
+                              allowFormatting
+                            />
+                          </Box>
+                        ))}
+                      </>
+                    )}
+
+                    {section.id === 'skills' && resumeData.skills.length > 0 && (
+                      <>
+                        {renderSectionTitle(section.title)}
+                        <Typography variant="body1" sx={getContentStyle()}>
+                          {resumeData.skills.join(' • ')}
+                        </Typography>
+                      </>
+                    )}
+
+                    {section.id === 'courses' && (
+                      <>
+                        {renderSectionTitle(section.title)}
+                        <Typography variant="body1" sx={getContentStyle()}>
+                          JavaScript and Algorithms • Responsive Web Designing • Symfony 5 Fundamentals & Deep Dive
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                </SortableSection>
+              ))}
+            </SortableContext>
+          </DndContext>
         </Paper>
       </Container>
     </Box>
